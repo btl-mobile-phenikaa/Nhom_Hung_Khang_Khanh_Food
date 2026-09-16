@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'models/order.dart';
+import './models/food.dart' show Food;
+import './models/order.dart' show Order;
+import './models/user.dart' show User;
 void main() {
   runApp(const MyApp());
 }
