@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121869979750",
+    "project_id": "khanhdeptrai-71a05",
+    "storage_bucket": "khanhdeptrai-71a05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121869979750:android:240588d6d36dd254325da7",
+        "android_client_info": {
+          "package_name": "com.example.nhom_hung_khang_khanh_food"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANcSsjphMWiLi4_q-oD5PzpP0i1uTcbow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
