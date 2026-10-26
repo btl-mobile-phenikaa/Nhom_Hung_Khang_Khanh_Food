@@ -36,15 +36,15 @@ class Food {
   }
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'price': price,
-        'description': description,
-        'category': category,
-        'restaurantId': restaurantId,
-        'imageUrl': imageUrl,
-        'isAvailable': isAvailable,
-        'rating': rating,
-      };
+    'name': name,
+    'price': price,
+    'description': description,
+    'category': category,
+    'restaurantId': restaurantId,
+    'imageUrl': imageUrl,
+    'isAvailable': isAvailable,
+    'rating': rating,
+  };
 
   Food copyWith({
     String? id,
@@ -56,18 +56,17 @@ class Food {
     String? imageUrl,
     bool? isAvailable,
     double? rating,
-  }) =>
-      Food(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        price: price ?? this.price,
-        description: description ?? this.description,
-        category: category ?? this.category,
-        restaurantId: restaurantId ?? this.restaurantId,
-        imageUrl: imageUrl ?? this.imageUrl,
-        isAvailable: isAvailable ?? this.isAvailable,
-        rating: rating ?? this.rating,
-      );
+  }) => Food(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    price: price ?? this.price,
+    description: description ?? this.description,
+    category: category ?? this.category,
+    restaurantId: restaurantId ?? this.restaurantId,
+    imageUrl: imageUrl ?? this.imageUrl,
+    isAvailable: isAvailable ?? this.isAvailable,
+    rating: rating ?? this.rating,
+  );
 
   static double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();

@@ -4,7 +4,7 @@ import '../models/order.dart' as app_model;
 
 class OrderRepository {
   OrderRepository({FirebaseFirestore? firestore})
-      : _orders = (firestore ?? FirebaseFirestore.instance).collection('orders');
+    : _orders = (firestore ?? FirebaseFirestore.instance).collection('orders');
 
   final CollectionReference<Map<String, dynamic>> _orders;
 
@@ -31,31 +31,15 @@ class OrderRepository {
       .where('userId', isEqualTo: uid)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => app_model.Order.fromMap(doc.data(), id: doc.id))
-          .toList());
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => app_model.Order.fromMap(doc.data(), id: doc.id))
+            .toList(),
+      );
 
   Future<app_model.Order?> getById(String id) async {
     final doc = await _orders.doc(id).get();
     if (!doc.exists || doc.data() == null) return null;
     return app_model.Order.fromMap(doc.data()!, id: doc.id);
-  }
-
-  Future<void> updateStatus(String id, String status) async {
-    const allowed = {
-      'pending',
-      'confirmed',
-      'preparing',
-      'delivering',
-      'completed',
-      'cancelled',
-    };
-    if (!allowed.contains(status)) {
-      throw ArgumentError.value(status, 'status', 'Trạng thái không hợp lệ');
-    }
-    await _orders.doc(id).update({
-      'status': status,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
   }
 }

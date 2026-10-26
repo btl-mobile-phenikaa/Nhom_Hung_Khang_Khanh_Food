@@ -17,7 +17,7 @@
 | `FoodRepository` | Tham chiếu collection `foods` | `getAll`, `watchAll`, `getById`, `add`, `update`, `delete` |
 | `RestaurantRepository` | Tham chiếu collection `restaurants` | `getAll`, `watchAll`, `getById`, `add`, `update` |
 | `UserRepository` | Tham chiếu collection `users` | `getById`, `watchById`, `save`, `updateProfile` |
-| `OrderRepository` | Tham chiếu collection `orders` | `create`, `watchByUser`, `getById`, `updateStatus` |
+| `OrderRepository` | Tham chiếu collection `orders` | `create`, `watchByUser`, `getById`; trạng thái chỉ được cập nhật bởi bên có quyền quản trị |
 
 ### Quy tắc nghiệp vụ chính
 
@@ -25,7 +25,7 @@
 2. `Food.price` và `OrderItem.unitPrice` là giá tại thời điểm đặt; đơn hàng không nên lấy giá mới nhất để tính lại lịch sử.
 3. `CartItem.quantity` phải lớn hơn hoặc bằng 1. Muốn xóa hẳn món, giao diện gọi thao tác xóa khỏi danh sách giỏ hàng.
 4. Đơn hàng phải thuộc một `userId` và có ít nhất một món.
-5. Trạng thái được hỗ trợ trong repository: `pending`, `confirmed`, `preparing`, `delivering`, `completed`, `cancelled`.
+5. Các trạng thái đơn hàng hiển thị: `pending`, `confirmed`, `preparing`, `delivering`, `completed`, `cancelled`. Ứng dụng client chỉ tạo và đọc đơn; cập nhật trạng thái cần quyền quản trị.
 6. Dữ liệu tiền tệ dùng kiểu số (`double` trong mô hình học tập). Với hệ thống thanh toán thực tế, nên cân nhắc lưu tiền theo đơn vị nguyên (VND) để tránh sai số dấu phẩy động.
 
 ## 3. Quan hệ giữa các lớp
@@ -130,7 +130,6 @@ classDiagram
     +create(order)
     +watchByUser(uid)
     +getById(id)
-    +updateStatus(id, status)
   }
   Restaurant "1" --> "0..*" Food : cung cấp
   User "1" --> "0..*" Order : đặt
@@ -142,13 +141,32 @@ classDiagram
   OrderRepository ..> Order : chuyển đổi dữ liệu
 ```
 
-## 5. Kiến trúc hệ thống
+## 5. Cấu trúc thư mục Flutter
+
+```text
+lib/
+  main.dart                 # Khởi tạo Firebase, theme và điều hướng ứng dụng
+  firebase_options.dart     # Cấu hình FlutterFire theo nền tảng
+  models/                   # Các đối tượng và ánh xạ document <-> model
+  repositories/             # Truy vấn/ghi Firestore, không chứa mã giao diện
+  screens/                  # Màn hình theo tính năng (bổ sung khi tách UI khỏi main.dart)
+  widgets/                  # Thành phần giao diện tái sử dụng
+test/
+  models/                   # Unit test cho model và ánh xạ dữ liệu
+  repositories/             # Test repository (dùng mock hoặc Firebase Emulator)
+docs/
+  person1/                  # Phân tích, kiến trúc, sơ đồ và hướng dẫn Firebase
+```
+
+`screens/` và `widgets/` là cấu trúc đích cho các thành viên khi bổ sung màn hình. Màn hình gọi repository thay vì truy cập Firestore trực tiếp; model không phụ thuộc vào widget. Firebase options là cấu hình ứng dụng, không chứa thông tin xác thực người dùng hay khóa dịch vụ quản trị.
+
+## 6. Kiến trúc hệ thống
 
 ```mermaid
 flowchart TD
   UI[Flutter UI: Home / Search / Cart / Profile / Orders]
   REPO[Repository layer]
-  MODEL[Domain models and map serialization]
+  MODEL[Models and document mapping]
   AUTH[Firebase Authentication]
   DB[(Cloud Firestore)]
   STORAGE[Firebase Storage - optional images]
@@ -156,10 +174,32 @@ flowchart TD
   REPO --> MODEL
   REPO --> DB
   UI --> AUTH
-  REPO -. image URL .-> STORAGE
+  STORAGE -. image URL .-> DB
 ```
 
-## 6. Thiết kế Firestore
+## 7. Thiết kế Firestore
+
+### Sơ đồ collection và quan hệ
+
+```mermaid
+flowchart LR
+  USERS["users/{uid}<br/>Hồ sơ người dùng"]
+  RESTAURANTS["restaurants/{restaurantId}<br/>Thông tin nhà hàng"]
+  FOODS["foods/{foodId}<br/>restaurantId"]
+  ORDERS["orders/{orderId}<br/>userId, items[]"]
+  RESTAURANTS -->|"1 nhà hàng có nhiều món"| FOODS
+  USERS -->|"1 người dùng có nhiều đơn"| ORDERS
+  ORDERS -->|"items[] nhúng OrderItem snapshot"| ITEMS["foodId, foodName, unitPrice, quantity"]
+```
+
+`items` là danh sách nhúng trong document đơn hàng, không phải collection riêng. Lưu snapshot tên món và đơn giá tại thời điểm đặt để lịch sử không thay đổi theo dữ liệu món hiện tại.
+
+| Collection/document | Document ID | Dữ liệu chính | Quyền truy cập theo rules mẫu |
+|---|---|---|---|
+| `users/{uid}` | Firebase Auth UID | `name`, `phone`, `address`, `email`, `photoUrl`, `updatedAt` | Người dùng đã đăng nhập chỉ đọc/ghi document của chính mình |
+| `restaurants/{restaurantId}` | Firestore tự sinh hoặc ID do nhóm chọn | `name`, `address`, `description`, `imageUrl`, `phone`, `rating`, `isOpen` | Đọc công khai; ghi bởi quản trị/trusted environment |
+| `foods/{foodId}` | Firestore tự sinh hoặc ID do nhóm chọn | `restaurantId`, `name`, `price`, `description`, `category`, `imageUrl`, `isAvailable`, `rating` | Đọc công khai; ghi bởi quản trị/trusted environment |
+| `orders/{orderId}` | Firestore tự sinh | `userId`, `items[]`, `totalPrice`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` | Người dùng tạo đơn của mình và chỉ đọc đơn của mình; không tự cập nhật trạng thái |
 
 ### `users/{uid}`
 
@@ -229,9 +269,9 @@ Document ID nên trùng với UID của Firebase Authentication.
 }
 ```
 
-## 7. Ghi chú bảo mật và giới hạn
+## 8. Ghi chú bảo mật và giới hạn
 
-- Firebase API key phía client không thay thế cơ chế bảo vệ dữ liệu. Cần bật Firestore Security Rules và chỉ cho người dùng đọc/sửa hồ sơ của chính họ; đơn hàng chỉ được người sở hữu đọc, còn cập nhật trạng thái quản trị cần quyền riêng.
+- Firebase API key phía client không thay thế cơ chế bảo vệ dữ liệu. Cần bật Firestore Security Rules và chỉ cho người dùng đọc/sửa hồ sơ của chính họ; đơn hàng chỉ được người sở hữu đọc, còn cập nhật trạng thái phải qua bên có quyền quản trị/trusted environment. `OrderRepository` phía client cố ý không cung cấp hàm cập nhật trạng thái vì rules mẫu chặn thao tác này.
 - Không để client tự do sửa `totalPrice` hoặc trạng thái đơn hàng trong ứng dụng thực tế. Với đồ án, hãy ghi rõ đây là mô hình học tập; nếu cần tính tiền đáng tin cậy thì tính/kiểm tra ở môi trường tin cậy.
 - Nếu dùng `where(userId == ...)` kết hợp `orderBy(createdAt)`, Firestore có thể yêu cầu tạo composite index; tạo index theo liên kết mà Firebase cung cấp khi chạy truy vấn.
 - Firestore là NoSQL document database, không phải ORM quan hệ truyền thống. Trong báo cáo nên mô tả `fromMap`/`toMap` là ánh xạ giữa document và Dart model, cùng repository quản lý CRUD.

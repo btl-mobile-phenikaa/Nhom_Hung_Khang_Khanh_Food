@@ -22,16 +22,13 @@ void main() {
     });
 
     test('fromMap parses numeric fields and uses document ID', () {
-      final food = Food.fromMap(
-        {
-          'name': 'Phở bò',
-          'price': 45000,
-          'description': 'Phở bò tái',
-          'category': 'Món nước',
-          'rating': 4.5,
-        },
-        id: 'food-2',
-      );
+      final food = Food.fromMap({
+        'name': 'Phở bò',
+        'price': 45000,
+        'description': 'Phở bò tái',
+        'category': 'Món nước',
+        'rating': 4.5,
+      }, id: 'food-2');
 
       expect(food.id, 'food-2');
       expect(food.price, 45000.0);
