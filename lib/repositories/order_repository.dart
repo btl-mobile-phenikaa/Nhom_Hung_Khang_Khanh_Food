@@ -22,7 +22,6 @@ class OrderRepository {
     final doc = _orders.doc();
     final data = order.toMap();
     data['createdAt'] = FieldValue.serverTimestamp();
-    data.remove('orderDate');
     await doc.set(data);
     return doc.id;
   }
