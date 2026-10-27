@@ -8,6 +8,10 @@ import 'features/search/screens/search_screen.dart';
 import 'firebase_options.dart';
 import 'models/food.dart';
 import 'state/cart_controller.dart';
+import 'state/auth_controller.dart';
+import 'services/demo_auth_service.dart';
+import 'services/firebase_auth_service.dart';
+import 'features/profile/screens/profile_screen.dart';
 
 export 'features/cart/screens/cart_screen.dart';
 export 'features/food_detail/screens/food_detail_screen.dart';
@@ -22,10 +26,16 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.foodsStream, this.cartController});
+  const MyApp({
+    super.key,
+    this.foodsStream,
+    this.cartController,
+    this.authController,
+  });
 
   final Stream<List<Food>>? foodsStream;
   final CartController? cartController;
+  final AuthController? authController;
 
   @override
   Widget build(BuildContext context) {
@@ -67,16 +77,23 @@ class MyApp extends StatelessWidget {
       home: MainNavigation(
         foodsStream: foodsStream,
         cartController: cartController,
+        authController: authController,
       ),
     );
   }
 }
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key, this.foodsStream, this.cartController});
+  const MainNavigation({
+    super.key,
+    this.foodsStream,
+    this.cartController,
+    this.authController,
+  });
 
   final Stream<List<Food>>? foodsStream;
   final CartController? cartController;
+  final AuthController? authController;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -86,11 +103,23 @@ class _MainNavigationState extends State<MainNavigation> {
   int currentIndex = 0;
   String? _searchCategoryFilter;
   late final CartController _cart;
+  late final AuthController _auth;
 
   @override
   void initState() {
     super.initState();
     _cart = widget.cartController ?? CartController();
+    _auth =
+        widget.authController ??
+        AuthController(
+          Firebase.apps.isEmpty ? DemoAuthService() : FirebaseAuthService(),
+        );
+  }
+
+  @override
+  void dispose() {
+    if (widget.authController == null) _auth.dispose();
+    super.dispose();
   }
 
   void _navigateToSearch([String? category]) {
@@ -117,7 +146,12 @@ class _MainNavigationState extends State<MainNavigation> {
         cartController: _cart,
         onExploreFoods: () => setState(() => currentIndex = 0),
       ),
-      const ProfileScreen(),
+      ProfileScreen(
+        controller: _auth,
+        onOrderHistory: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
+      ),
     ];
 
     return Scaffold(
@@ -164,37 +198,4 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
     );
   }
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Tài khoản')),
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.person, size: 72, color: Color(0xFFFF6B35)),
-            const SizedBox(height: 16),
-            const Text('Tài khoản của bạn'),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-                ),
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: const Text('Lịch sử đơn hàng'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }

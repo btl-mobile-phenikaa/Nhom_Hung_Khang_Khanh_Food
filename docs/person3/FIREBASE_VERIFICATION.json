@@ -1,0 +1,65 @@
+{
+  "project": "khanhdeptrai-71a05",
+  "checks": [
+    {
+      "check": "Đăng ký tài khoản thử a",
+      "passed": true
+    },
+    {
+      "check": "Đăng ký tài khoản thử b",
+      "passed": true
+    },
+    {
+      "check": "Đăng nhập Email/Password trả đúng UID",
+      "passed": true
+    },
+    {
+      "check": "Sai mật khẩu bị từ chối",
+      "passed": true
+    },
+    {
+      "check": "Lưu hồ sơ chính chủ với server timestamp",
+      "passed": true
+    },
+    {
+      "check": "Đọc hồ sơ chính chủ",
+      "passed": true
+    },
+    {
+      "check": "Cập nhật hồ sơ chính chủ",
+      "passed": true
+    },
+    {
+      "check": "Đọc lại dữ liệu đã cập nhật",
+      "passed": true
+    },
+    {
+      "check": "Tài khoản B không đọc được hồ sơ A",
+      "passed": true
+    },
+    {
+      "check": "Tài khoản B không sửa được hồ sơ A",
+      "passed": true
+    },
+    {
+      "check": "Khách chưa đăng nhập không đọc được hồ sơ",
+      "passed": true
+    },
+    {
+      "check": "Dọn hồ sơ thử",
+      "passed": true
+    },
+    {
+      "check": "Dọn tài khoản thử",
+      "passed": true
+    },
+    {
+      "check": "Dọn hồ sơ thử",
+      "passed": true
+    },
+    {
+      "check": "Dọn tài khoản thử",
+      "passed": true
+    }
+  ]
+}

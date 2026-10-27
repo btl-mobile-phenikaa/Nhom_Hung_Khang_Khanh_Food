@@ -34,3 +34,17 @@ flutter test
 - `orders/{orderId}`
 
 Cloud Firestore is a NoSQL document database. The Dart models' `fromMap`/`toMap` methods map documents to models, and repositories centralize database operations.
+
+
+## Người 3 — Tài khoản và xác thực
+
+Đã kết nối Firebase Authentication và hồ sơ Firestore: Đăng nhập, Đăng ký,
+Hồ sơ, Chỉnh sửa hồ sơ, Đăng xuất, khôi phục phiên và test.
+Có thêm bản demo độc lập khi cần thử giao diện không có backend. Xem [hướng dẫn chạy và tích hợp](docs/person3/README.md),
+[sơ đồ luồng](docs/person3/FLOWS.md) và wireframe bên dưới.
+
+![Wireframe tài khoản](docs/person3/account_wireframes.svg)
+
+```sh
+flutter run -t lib/main_auth_demo.dart -d web-server --web-port 8080
+```
