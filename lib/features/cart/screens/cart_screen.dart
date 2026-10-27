@@ -5,6 +5,7 @@ import '../../../core/formatters/currency_formatter.dart';
 import '../../../core/widgets/food_image_helper.dart';
 import '../../../models/cart_item.dart';
 import '../../../state/cart_controller.dart';
+import '../../checkout/screens/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({
@@ -28,7 +29,8 @@ class _CartScreenState extends State<CartScreen> {
   String _selectedVoucherCode = 'GIAM20K';
   double _discountAmount = 20000.0;
 
-  static const List<(String code, String label, double discount)> _cartVouchers = [
+  static const List<(String code, String label, double discount)>
+  _cartVouchers = [
     ('GIAM20K', 'Giảm 20.000đ đơn bất kỳ', 20000.0),
     ('FREESHIP', 'Hỗ trợ 15.000đ phí ship', 15000.0),
     ('BAOAN30K', 'Giảm 30.000đ đơn nhóm', 30000.0),
@@ -65,7 +67,9 @@ class _CartScreenState extends State<CartScreen> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               _cart.clear();
@@ -86,8 +90,16 @@ class _CartScreenState extends State<CartScreen> {
     const savedAddresses = <(String tag, String address, IconData icon)>[
       ('Trường ĐH', '144 Xuân Thủy, Cầu Giấy, Hà Nội', Icons.school_rounded),
       ('Nhà riêng', 'Số 25 Ngõ 68 Cầu Giấy, Hà Nội', Icons.home_rounded),
-      ('Ký túc xá', 'KTX Mỹ Đình, Nam Từ Liêm, Hà Nội', Icons.apartment_rounded),
-      ('Văn phòng', 'Tòa Keangnam Landmark 72, Phạm Hùng, Hà Nội', Icons.business_rounded),
+      (
+        'Ký túc xá',
+        'KTX Mỹ Đình, Nam Từ Liêm, Hà Nội',
+        Icons.apartment_rounded,
+      ),
+      (
+        'Văn phòng',
+        'Tòa Keangnam Landmark 72, Phạm Hùng, Hà Nội',
+        Icons.business_rounded,
+      ),
     ];
 
     showDialog(
@@ -275,105 +287,19 @@ class _CartScreenState extends State<CartScreen> {
   void _handleCheckout() {
     if (widget.onCheckout != null) {
       widget.onCheckout!();
-    } else {
-      final total = (_cart.totalPrice - (_voucherApplied ? _discountAmount : 0)).clamp(0.0, double.infinity);
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (ctx) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE8F5E9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_circle, color: Color(0xFF00B074), size: 28),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sẵn sàng đặt hàng',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Đơn hàng đã được kiểm tra hợp lệ',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Số lượng món:'),
-                        Text('${_cart.totalItemCount} món', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Tổng thanh toán:'),
-                        Text(
-                          CurrencyFormatter.formatSimple(total),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFFFF5428),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Màn hình Xác nhận đơn hàng & Phương thức thanh toán sẽ do Người 4 hoàn thiện tích hợp.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5428),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Đã hiểu', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      );
+      return;
     }
+
+    if (_cart.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          cartController: _cart,
+          voucherDiscount: _voucherApplied ? _discountAmount : 0,
+        ),
+      ),
+    );
   }
 
   @override
@@ -394,7 +320,10 @@ class _CartScreenState extends State<CartScreen> {
               if (_cart.isEmpty) return const SizedBox.shrink();
               return IconButton(
                 tooltip: 'Xóa giỏ hàng',
-                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+                icon: const Icon(
+                  Icons.delete_sweep_outlined,
+                  color: Colors.redAccent,
+                ),
                 onPressed: _confirmClearCart,
               );
             },
@@ -418,7 +347,8 @@ class _CartScreenState extends State<CartScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF5428).withValues(alpha: 0.15),
+                            color: const Color(0xFFFF5428)
+                                .withValues(alpha: 0.15),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -443,7 +373,11 @@ class _CartScreenState extends State<CartScreen> {
                     Text(
                       'Giỏ hàng của bạn đang trống.\nHãy dạo một vòng và chọn những món ăn ngon miệng nhé!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600, height: 1.5, fontSize: 13.5),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        height: 1.5,
+                        fontSize: 13.5,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     ElevatedButton.icon(
@@ -458,7 +392,8 @@ class _CartScreenState extends State<CartScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 3,
-                        shadowColor: const Color(0xFFFF5428).withValues(alpha: 0.4),
+                        shadowColor: const Color(0xFFFF5428)
+                            .withValues(alpha: 0.4),
                       ),
                       onPressed: () {
                         if (widget.onExploreFoods != null) {
@@ -468,7 +403,10 @@ class _CartScreenState extends State<CartScreen> {
                         }
                       },
                       icon: const Icon(Icons.restaurant_menu),
-                      label: const Text('Khám phá món ngon', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Khám phá món ngon',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -477,9 +415,13 @@ class _CartScreenState extends State<CartScreen> {
           }
 
           final items = _cart.items;
-          final primarySeller = SampleFoodCatalog.getSellerInfo(items.first.food);
+          final primarySeller = SampleFoodCatalog.getSellerInfo(
+            items.first.food,
+          );
           final distinctStores = items
-              .map((item) => SampleFoodCatalog.getSellerInfo(item.food).storeName)
+              .map(
+                (item) => SampleFoodCatalog.getSellerInfo(item.food).storeName,
+              )
               .toSet();
           final extraStoreCount = distinctStores.length - 1;
 
@@ -580,7 +522,9 @@ class _CartScreenState extends State<CartScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +555,11 @@ class _CartScreenState extends State<CartScreen> {
                                   ],
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 7, top: 2, bottom: 2),
+                                  padding: const EdgeInsets.only(
+                                    left: 7,
+                                    top: 2,
+                                    bottom: 2,
+                                  ),
                                   child: Container(
                                     width: 2,
                                     height: 12,
@@ -649,7 +597,9 @@ class _CartScreenState extends State<CartScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFEFF6FF),
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           border: Border.all(
                                             color: const Color(0xFFBFDBFE),
                                           ),
@@ -682,8 +632,10 @@ class _CartScreenState extends State<CartScreen> {
                         child: _CartItemTile(
                           key: ValueKey(item.food.id),
                           item: item,
-                          onIncrease: () => _cart.increaseQuantity(item.food.id),
-                          onDecrease: () => _cart.decreaseQuantity(item.food.id),
+                          onIncrease: () =>
+                              _cart.increaseQuantity(item.food.id),
+                          onDecrease: () =>
+                              _cart.decreaseQuantity(item.food.id),
                           onRemove: () {
                             final removed = _cart.removeItem(item.food.id);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -773,7 +725,8 @@ class _CartScreenState extends State<CartScreen> {
                             runSpacing: 8,
                             children: _cartVouchers.map((v) {
                               final isSelected =
-                                  _voucherApplied && _selectedVoucherCode == v.$1;
+                                  _voucherApplied &&
+                                  _selectedVoucherCode == v.$1;
                               return InkWell(
                                 onTap: () {
                                   setState(() {
@@ -915,7 +868,10 @@ class _CartItemTile extends StatelessWidget {
                 if (food.description.startsWith('Tùy chọn:')) ...[
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2.5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(6),
@@ -945,10 +901,7 @@ class _CartItemTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   'Tạm tính: ${CurrencyFormatter.formatSimple(item.subtotal)}',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -996,7 +949,11 @@ class _CartItemTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       child: const Padding(
                         padding: EdgeInsets.all(5),
-                        child: Icon(Icons.add, size: 15, color: Color(0xFFFF5428)),
+                        child: Icon(
+                          Icons.add,
+                          size: 15,
+                          color: Color(0xFFFF5428),
+                        ),
                       ),
                     ),
                   ],
@@ -1023,7 +980,10 @@ class _CartSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final finalTotal = (cart.totalPrice - voucherDiscount).clamp(0.0, double.infinity);
+    final finalTotal = (cart.totalPrice - voucherDiscount).clamp(
+      0.0,
+      double.infinity,
+    );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
@@ -1045,10 +1005,16 @@ class _CartSummarySection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Tạm tính:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                const Text(
+                  'Tạm tính:',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
                 Text(
                   CurrencyFormatter.formatSimple(cart.subtotal),
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -1058,11 +1024,17 @@ class _CartSummarySection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text('Phí giao hàng:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    const Text(
+                      'Phí giao hàng:',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
                     if (cart.deliveryFee == 0) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(6),
@@ -1086,7 +1058,9 @@ class _CartSummarySection extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: cart.deliveryFee == 0 ? Colors.green : Colors.black87,
+                    color: cart.deliveryFee == 0
+                        ? Colors.green
+                        : Colors.black87,
                   ),
                 ),
               ],
@@ -1096,7 +1070,10 @@ class _CartSummarySection extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Giảm giá voucher:', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const Text(
+                    'Giảm giá voucher:',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
                   Text(
                     '-${CurrencyFormatter.formatSimple(voucherDiscount)}',
                     style: const TextStyle(

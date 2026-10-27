@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'features/cart/screens/cart_screen.dart';
 import 'features/home/screens/home_screen.dart';
+import 'features/order_history/screens/order_history_screen.dart';
 import 'features/search/screens/search_screen.dart';
 import 'firebase_options.dart';
 import 'models/food.dart';
@@ -21,11 +22,7 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({
-    super.key,
-    this.foodsStream,
-    this.cartController,
-  });
+  const MyApp({super.key, this.foodsStream, this.cartController});
 
   final Stream<List<Food>>? foodsStream;
   final CartController? cartController;
@@ -76,11 +73,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({
-    super.key,
-    this.foodsStream,
-    this.cartController,
-  });
+  const MainNavigation({super.key, this.foodsStream, this.cartController});
 
   final Stream<List<Food>>? foodsStream;
   final CartController? cartController;
@@ -178,16 +171,30 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Profile')),
-        body: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.person, size: 72, color: Color(0xFFFF6B35)),
-              SizedBox(height: 16),
-              Text('Your account information.'),
-            ],
-          ),
+    appBar: AppBar(title: const Text('Tài khoản')),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.person, size: 72, color: Color(0xFFFF6B35)),
+            const SizedBox(height: 16),
+            const Text('Tài khoản của bạn'),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+                ),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Lịch sử đơn hàng'),
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
