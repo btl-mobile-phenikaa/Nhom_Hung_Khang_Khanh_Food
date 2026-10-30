@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/formatters/currency_formatter.dart';
@@ -9,17 +11,31 @@ import 'order_detail_screen.dart';
 /// - Danh sách đơn hàng (ngày đặt, tổng tiền, trạng thái)
 /// - Nhấn chọn đơn để xem chi tiết
 class OrderHistoryScreen extends StatefulWidget {
-  const OrderHistoryScreen({super.key});
+  const OrderHistoryScreen({super.key, this.userId});
+
+  final String? userId;
 
   @override
   State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
-  final _orderRepo = OrderRepository();
+  String get _effectiveUserId {
+    final explicit = widget.userId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    if (Firebase.apps.isNotEmpty) {
+      final uid = fb_auth.FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null && uid.isNotEmpty) return uid;
+    }
+    return 'demo_user';
+  }
 
-  // Mô phỏng userId
-  static const _userId = 'demo_user';
+  Stream<List<app_model.Order>> _watchOrders() {
+    if (Firebase.apps.isEmpty) {
+      return Stream.value(const []);
+    }
+    return OrderRepository().watchByUser(_effectiveUserId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +50,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         elevation: 0.5,
       ),
       body: StreamBuilder<List<app_model.Order>>(
-        stream: _orderRepo.watchByUser(_userId),
+        stream: _watchOrders(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(

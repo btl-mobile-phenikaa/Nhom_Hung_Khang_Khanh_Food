@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/formatters/currency_formatter.dart';
@@ -20,10 +22,12 @@ class CheckoutScreen extends StatefulWidget {
     super.key,
     required this.cartController,
     this.voucherDiscount = 0,
+    this.userId,
   });
 
   final CartController cartController;
   final double voucherDiscount;
+  final String? userId;
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -32,7 +36,16 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _noteController = TextEditingController();
   final _addressController = TextEditingController();
-  final _orderRepository = OrderRepository();
+
+  String get _effectiveUserId {
+    final explicit = widget.userId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    if (Firebase.apps.isNotEmpty) {
+      final uid = fb_auth.FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null && uid.isNotEmpty) return uid;
+    }
+    return 'demo_user';
+  }
 
   String _selectedPaymentMethod = 'cash';
   bool _isPlacingOrder = false;
@@ -99,7 +112,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       final order = app_model.Order(
         id: '',
-        userId: 'demo_user', // Mô phỏng userId
+        userId: _effectiveUserId,
         items: orderItems,
         totalPrice: _finalTotal,
         orderDate: DateTime.now(),
@@ -109,7 +122,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         note: _noteController.text.trim(),
       );
 
-      await _orderRepository.create(order);
+      if (Firebase.apps.isNotEmpty) {
+        await OrderRepository().create(order);
+      }
 
       _cart.updateDeliveryAddress(address);
 
@@ -191,7 +206,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const OrderHistoryScreen(),
+                      builder: (_) => OrderHistoryScreen(
+                        userId: _effectiveUserId,
+                      ),
                     ),
                   );
                 },

@@ -28,13 +28,14 @@ class OrderRepository {
 
   Stream<List<app_model.Order>> watchByUser(String uid) => _orders
       .where('userId', isEqualTo: uid)
-      .orderBy('createdAt', descending: true)
       .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
+      .map((snapshot) {
+        final orders = snapshot.docs
             .map((doc) => app_model.Order.fromMap(doc.data(), id: doc.id))
-            .toList(),
-      );
+            .toList();
+        orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+        return orders;
+      });
 
   Future<app_model.Order?> getById(String id) async {
     final doc = await _orders.doc(id).get();
