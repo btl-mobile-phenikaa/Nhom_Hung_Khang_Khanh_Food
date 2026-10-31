@@ -53,6 +53,8 @@ class CartController extends ChangeNotifier {
 
   bool get isNotEmpty => _items.isNotEmpty;
 
+  int get totalQuantity => totalItemCount;
+
   int get totalItemCount =>
       _items.fold<int>(0, (total, item) => total + item.quantity);
 

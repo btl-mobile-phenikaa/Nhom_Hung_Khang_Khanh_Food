@@ -429,7 +429,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
       bottomNavigationBar: ListenableBuilder(
         listenable: widget.cartController,
         builder: (context, _) {
-          final count = widget.cartController.totalQuantity;
+          final count = widget.cartController.totalItemCount;
           final total = widget.cartController.totalPrice;
           if (count == 0) return const SizedBox.shrink();
 

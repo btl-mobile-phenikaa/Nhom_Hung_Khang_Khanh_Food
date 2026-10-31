@@ -41,7 +41,7 @@ void main() {
 
     testWidgets('US13: RestaurantDetailScreen renders restaurant info and dishes',
         (tester) async {
-      final cartController = CartController();
+      final cartController = CartController.createInstance();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -67,7 +67,7 @@ void main() {
 
     testWidgets('US13: Searching within restaurant filters the dish list',
         (tester) async {
-      final cartController = CartController();
+      final cartController = CartController.createInstance();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -94,7 +94,7 @@ void main() {
 
     testWidgets('US13: Adding item from restaurant screen updates CartController',
         (tester) async {
-      final cartController = CartController();
+      final cartController = CartController.createInstance();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -108,7 +108,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(cartController.totalQuantity, 0);
+      expect(cartController.totalItemCount, 0);
 
       // Bấm nút thêm món đầu tiên
       final addButtons = find.byIcon(Icons.add);
@@ -116,7 +116,7 @@ void main() {
       await tester.tap(addButtons.first);
       await tester.pumpAndSettle();
 
-      expect(cartController.totalQuantity, 1);
+      expect(cartController.totalItemCount, 1);
       expect(find.text('Xem giỏ hàng'), findsOneWidget);
     });
 
