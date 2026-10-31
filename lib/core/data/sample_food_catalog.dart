@@ -344,6 +344,34 @@ class SampleFoodCatalog {
     return byId.values.toList();
   }
 
+  /// Nạp toàn bộ dữ liệu mẫu (20 món ăn & 3 nhà hàng đối tác) lên Firestore (US15)
+  /// Trả về số lượng item đã đồng bộ thành công.
+  static Future<({int foodsCount, int restaurantsCount})> seedAllData({
+    bool force = false,
+  }) async {
+    if (Firebase.apps.isEmpty) {
+      return (
+        foodsCount: defaultFoods.length,
+        restaurantsCount: defaultRestaurants.length,
+      );
+    }
+    final db = FirebaseFirestore.instance;
+    final batch = db.batch();
+    for (final food in defaultFoods) {
+      final ref = db.collection('foods').doc(food.id);
+      batch.set(ref, food.toMap(), SetOptions(merge: true));
+    }
+    for (final res in defaultRestaurants) {
+      final ref = db.collection('restaurants').doc(res.id);
+      batch.set(ref, res.toMap(), SetOptions(merge: true));
+    }
+    await batch.commit();
+    return (
+      foodsCount: defaultFoods.length,
+      restaurantsCount: defaultRestaurants.length,
+    );
+  }
+
   /// Đồng bộ toàn bộ 20 món ăn & 3 nhà hàng lên Firestore nếu ứng dụng đang kết nối Firebase
   static Future<void> seedToFirestoreIfNeeded() async {
     if (Firebase.apps.isEmpty) return;

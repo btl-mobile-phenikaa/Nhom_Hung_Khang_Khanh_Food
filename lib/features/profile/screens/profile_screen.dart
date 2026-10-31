@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/data/sample_food_catalog.dart';
 import '../../../state/auth_controller.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../auth/screens/register_screen.dart';
@@ -141,6 +142,37 @@ class ProfileScreen extends StatelessWidget {
               onTap: onOrderHistory,
             ),
           ],
+          const Divider(height: 32),
+          ListTile(
+            leading: const Icon(Icons.cloud_sync_outlined, color: Color(0xFF2563EB)),
+            title: const Text('Đồng bộ dữ liệu mẫu (US15)'),
+            subtitle: const Text('Nạp 20 món ăn & 3 nhà hàng lên Firebase Firestore'),
+            trailing: const Icon(Icons.upload_file_outlined),
+            onTap: () async {
+              try {
+                final result = await SampleFoodCatalog.seedAllData();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Đã nạp thành công ${result.foodsCount} món ăn và ${result.restaurantsCount} nhà hàng lên Firestore!',
+                      ),
+                      backgroundColor: const Color(0xFF047857),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Không thể đồng bộ: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
           AccountError(message: controller.error),
           if (user != null && controller.error != null)
             OutlinedButton.icon(

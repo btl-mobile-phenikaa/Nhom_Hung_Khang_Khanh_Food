@@ -13,6 +13,7 @@ import '../../../repositories/food_repository.dart';
 import '../../../state/cart_controller.dart';
 import '../../cart/screens/cart_screen.dart';
 import '../../food_detail/screens/food_detail_screen.dart';
+import '../../restaurant/screens/restaurant_detail_screen.dart';
 import '../../search/screens/search_screen.dart';
 import '../widgets/category_section.dart';
 import '../widgets/restaurant_section.dart';
@@ -121,6 +122,18 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  void _openRestaurantDetail(Restaurant restaurant) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RestaurantDetailScreen(
+          restaurant: restaurant,
+          cartController: _cart,
+          foodsStream: _foodsStream,
+        ),
+      ),
+    );
   }
 
   void _openFoodDetail(Food food) {
@@ -364,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             RestaurantSection(
               restaurantsStream: widget.restaurantsStream,
-              onTapRestaurant: (res) => _openSearch(),
+              onTapRestaurant: _openRestaurantDetail,
             ),
           ],
         ),

@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Hồ sơ người dùng: Chỉ tài khoản chính chủ mới có quyền đọc và cập nhật (US16)
+    match /users/{userId} {
+      allow read, create, update: if request.auth != null
+        && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // 2. Danh mục nhà hàng đối tác: Đọc công khai cho toàn bộ khách hàng (US13, US16)
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 3. Thực đơn món ăn: Đọc công khai thời gian thực cho mọi khách hàng (US14, US16)
+    match /foods/{foodId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 4. Đơn hàng khách hàng: Chỉ chủ sở hữu đơn mới được tạo và xem lịch sử đơn (US10, US11, US16)
+    match /orders/{orderId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0;
+      allow read: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

@@ -17,6 +17,26 @@ class FoodRepository {
         .toList();
   }
 
+  /// Lắng nghe thực đơn theo thời gian thực của một nhà hàng cụ thể (US14)
+  Stream<List<Food>> watchByRestaurant(String restaurantId, {bool availableOnly = true}) {
+    Query<Map<String, dynamic>> query =
+        _foods.where('restaurantId', isEqualTo: restaurantId);
+    if (availableOnly) query = query.where('isAvailable', isEqualTo: true);
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map((doc) => Food.fromMap(doc.data(), id: doc.id))
+        .toList());
+  }
+
+  /// Lắng nghe thực đơn theo thời gian thực theo danh mục món ăn (US14)
+  Stream<List<Food>> watchByCategory(String category, {bool availableOnly = true}) {
+    Query<Map<String, dynamic>> query =
+        _foods.where('category', isEqualTo: category);
+    if (availableOnly) query = query.where('isAvailable', isEqualTo: true);
+    return query.snapshots().map((snapshot) => snapshot.docs
+        .map((doc) => Food.fromMap(doc.data(), id: doc.id))
+        .toList());
+  }
+
   Stream<List<Food>> watchAll({bool availableOnly = true}) {
     Query<Map<String, dynamic>> query = _foods;
     if (availableOnly) query = query.where('isAvailable', isEqualTo: true);
