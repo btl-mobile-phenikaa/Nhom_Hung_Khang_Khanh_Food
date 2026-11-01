@@ -7,9 +7,9 @@ service cloud.firestore {
     }
 
     // 1. Hồ sơ người dùng: Chỉ tài khoản chính chủ mới có quyền đọc và cập nhật (US16)
-    match /users/{uid} {
+    match /users/{userId} {
       allow read, create, update: if request.auth != null
-        && request.auth.uid == uid;
+        && request.auth.uid == userId;
       allow delete: if false;
     }
 

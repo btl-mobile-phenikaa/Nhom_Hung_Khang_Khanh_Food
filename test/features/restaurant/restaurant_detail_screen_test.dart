@@ -133,8 +133,17 @@ void main() {
 
       final content = rulesFile.readAsStringSync();
       expect(content, contains('rules_version = \'2\';'));
-      expect(content, contains('match /users/{userId}'));
-      expect(content, contains('request.auth.uid == userId'));
+      expect(
+        content.contains('match /users/{userId}') ||
+            content.contains('match /users/{uid}'),
+        isTrue,
+        reason: 'Rules must guard users collection by userId or uid',
+      );
+      expect(
+        content.contains('request.auth.uid == userId') ||
+            content.contains('request.auth.uid == uid'),
+        isTrue,
+      );
       expect(content, contains('match /restaurants/{restaurantId}'));
       expect(content, contains('match /foods/{foodId}'));
       expect(content, contains('match /orders/{orderId}'));

@@ -335,7 +335,7 @@ class CartController extends ChangeNotifier {
   int getQuantity(String foodId) {
     return _items
         .where((element) => element.food.id == foodId || element.itemKey == foodId)
-        .fold<int>(0, (sum, item) => sum + item.quantity);
+        .fold<int>(0, (total, item) => total + item.quantity);
   }
 
   /// Reset dùng cho test

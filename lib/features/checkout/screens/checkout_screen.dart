@@ -195,7 +195,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
 
       // Hiển thị dialog thành công
-      _showSuccessDialog();
+      _showSuccessDialog(uid);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,7 +209,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(String uid) {
     showDialog(
       context: context,
       barrierDismissible: false,
