@@ -14,8 +14,8 @@ hồ sơ cá nhân, chỉnh sửa hồ sơ, khôi phục phiên và xử lý l�
 - [Kết quả kiểm tra backend thật](FIREBASE_VERIFICATION.json).
 - [Đoạn Firestore Rules cho hồ sơ](firestore_users.rules.txt).
 
-Tên đề tài là Foodie. Màn đăng nhập dùng logo **FoodHub** giống Trang chủ;
-tiêu đề đăng ký trong code hiện tại là **“Tạo tài khoản Foodie”**. Wireframe giữ
+Tên ứng dụng thống nhất là **FoodHub**. Màn đăng nhập dùng logo **FoodHub** giống Trang chủ;
+tiêu đề đăng ký trong code hiện tại là **“Tạo tài khoản FoodHub”**. Wireframe giữ
 đúng các nhãn đang hiển thị trong ứng dụng.
 
 ## Chạy ứng dụng Firebase thật

@@ -50,7 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           DemoNotice(controller: auth),
           const SizedBox(height: 20),
           const Text(
-            'Tạo tài khoản Foodie',
+            'Tạo tài khoản FoodHub',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),

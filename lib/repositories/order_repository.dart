@@ -4,7 +4,8 @@ import '../models/order.dart' as app_model;
 
 class OrderRepository {
   OrderRepository({FirebaseFirestore? firestore})
-    : _orders = (firestore ?? FirebaseFirestore.instance).collection('orders');
+      : _orders =
+            (firestore ?? FirebaseFirestore.instance).collection('orders');
 
   final CollectionReference<Map<String, dynamic>> _orders;
 
@@ -33,7 +34,7 @@ class OrderRepository {
         final orders = snapshot.docs
             .map((doc) => app_model.Order.fromMap(doc.data(), id: doc.id))
             .toList();
-        orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+        orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         return orders;
       });
 

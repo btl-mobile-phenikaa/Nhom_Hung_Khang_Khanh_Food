@@ -95,7 +95,7 @@ class OrderDetailScreen extends StatelessWidget {
             icon: Icons.access_time_rounded,
             iconColor: const Color(0xFF2563EB),
             title: 'Thời gian đặt hàng',
-            content: _formatFullDate(order.orderDate),
+            content: _formatFullDate(order.createdAt),
           ),
           const SizedBox(height: 12),
 
@@ -142,7 +142,7 @@ class OrderDetailScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Tên và giá đơn
+                            // Tên, size, topping và giá snapshot tại thời điểm đặt
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +155,69 @@ class OrderDetailScreen extends StatelessWidget {
                                       color: Color(0xFF0F172A),
                                     ),
                                   ),
-                                  const SizedBox(height: 3),
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      if (item.size.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: const Color(0xFFBFDBFE),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Size: ${item.size}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                        ),
+                                      if (item.toppings.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFF7ED),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: const Color(0xFFFED7AA),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Topping: ${item.toppings.join(', ')}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFFC2410C),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (item.note.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'Ghi chú món: ${item.note}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontStyle: FontStyle.italic,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
                                   Text(
                                     '${CurrencyFormatter.format(item.unitPrice)} × ${item.quantity}',
                                     style: TextStyle(

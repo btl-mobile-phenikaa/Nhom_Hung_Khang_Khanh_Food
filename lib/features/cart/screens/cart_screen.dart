@@ -630,14 +630,14 @@ class _CartScreenState extends State<CartScreen> {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _CartItemTile(
-                          key: ValueKey(item.food.id),
+                          key: ValueKey(item.itemKey),
                           item: item,
                           onIncrease: () =>
-                              _cart.increaseQuantity(item.food.id),
+                              _cart.increaseQuantity(item.itemKey),
                           onDecrease: () =>
-                              _cart.decreaseQuantity(item.food.id),
+                              _cart.decreaseQuantity(item.itemKey),
                           onRemove: () {
-                            final removed = _cart.removeItem(item.food.id);
+                            final removed = _cart.removeItem(item.itemKey);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Đã xóa ${item.food.name}'),
@@ -648,6 +648,10 @@ class _CartScreenState extends State<CartScreen> {
                                       _cart.addItem(
                                         removed.food,
                                         quantity: removed.quantity,
+                                        size: removed.size,
+                                        toppings: removed.toppings,
+                                        unitPrice: removed.unitPrice,
+                                        note: removed.note,
                                       );
                                     }
                                   },
@@ -865,7 +869,7 @@ class _CartItemTile extends StatelessWidget {
                     color: Color(0xFF0F172A),
                   ),
                 ),
-                if (food.description.startsWith('Tùy chọn:')) ...[
+                if (item.size.isNotEmpty || item.toppings.isNotEmpty || item.note.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -878,7 +882,12 @@ class _CartItemTile extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFBFDBFE)),
                     ),
                     child: Text(
-                      food.description,
+                      [
+                        'Size: ${item.size}',
+                        if (item.toppings.isNotEmpty)
+                          'Topping: ${item.toppings.join(', ')}',
+                        if (item.note.isNotEmpty) 'Ghi chú: ${item.note}',
+                      ].join(' • '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -891,7 +900,7 @@ class _CartItemTile extends StatelessWidget {
                 ],
                 const SizedBox(height: 4),
                 Text(
-                  CurrencyFormatter.formatSimple(food.price),
+                  CurrencyFormatter.formatSimple(item.unitPrice),
                   style: const TextStyle(
                     color: Color(0xFFFF5428),
                     fontWeight: FontWeight.bold,

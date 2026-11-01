@@ -1,34 +1,48 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Kiểm tra quyền Quản trị viên (Firebase Auth Custom Claims hoặc Trusted Backend qua Admin SDK)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     // 1. Hồ sơ người dùng: Chỉ tài khoản chính chủ mới có quyền đọc và cập nhật (US16)
-    match /users/{userId} {
+    match /users/{uid} {
       allow read, create, update: if request.auth != null
-        && request.auth.uid == userId;
+        && request.auth.uid == uid;
       allow delete: if false;
     }
 
-    // 2. Danh mục nhà hàng đối tác: Đọc công khai cho toàn bộ khách hàng (US13, US16)
+    // 2. Giỏ hàng theo UID: Người dùng chỉ được đọc và sửa giỏ hàng của chính mình (US06, US07, US16)
+    match /carts/{uid} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == uid;
+    }
+
+    // 3. Danh mục nhà hàng đối tác: Đọc công khai; chỉ Quản trị viên hoặc Trusted Backend mới được chỉnh sửa (US13, US16)
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
-    // 3. Thực đơn món ăn: Đọc công khai thời gian thực cho mọi khách hàng (US14, US16)
+    // 4. Thực đơn món ăn: Đọc công khai; chỉ Quản trị viên hoặc Trusted Backend mới được sửa giá và món ăn (US14, US16)
     match /foods/{foodId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
-    // 4. Đơn hàng khách hàng: Chỉ chủ sở hữu đơn mới được tạo và xem lịch sử đơn (US10, US11, US16)
+    // 5. Đơn hàng khách hàng: Người dùng chỉ được tạo và xem đơn hàng của chính mình;
+    //    việc cập nhật trạng thái đơn hàng (status) chỉ do Quản trị viên hoặc Trusted Backend thực hiện (US10, US11, US16)
     match /orders/{orderId} {
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.items is list
         && request.resource.data.items.size() > 0;
       allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if false;
     }
   }
 }

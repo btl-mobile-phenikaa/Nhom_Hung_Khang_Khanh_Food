@@ -23,15 +23,17 @@ void main() {
     );
 
     setUp(() {
-      controller = CartController.createInstance();
+      controller = CartController.createInstance(userId: 'uid_test_123');
     });
 
-    test('Initial state is empty', () {
+    test('Initial state is empty and Firestore path is isolated by UID', () {
       expect(controller.isEmpty, isTrue);
       expect(controller.items, isEmpty);
       expect(controller.totalItemCount, 0);
       expect(controller.subtotal, 0.0);
       expect(controller.totalPrice, 0.0);
+      expect(controller.firestoreCartPath, 'carts/uid_test_123');
+      expect(CartController.localStorageKey, 'foodhub_active_cart_v1');
     });
 
     test('Add item creates CartItem and notifies', () {
@@ -51,6 +53,36 @@ void main() {
       expect(controller.items.length, 1);
       expect(controller.totalItemCount, 4);
       expect(controller.subtotal, 200000.0);
+    });
+
+    test('Adding same food with different Size L and toppings keeps separate CartItems and preserves payload', () {
+      controller.addItem(foodA, quantity: 1, size: 'Size S');
+      controller.addItem(
+        foodA,
+        quantity: 2,
+        size: 'Size L',
+        toppings: const ['Thêm quẩy giòn', 'Thêm trứng ốp la'],
+        unitPrice: 80000,
+      );
+
+      expect(controller.items.length, 2);
+      expect(controller.totalItemCount, 3);
+      expect(controller.subtotal, 210000.0);
+
+      final payload = controller.toCartPayload();
+      expect(payload['userId'], 'uid_test_123');
+      expect(payload['totalItemCount'], 3);
+      expect(payload['subtotal'], 210000.0);
+
+      final restoredController = CartController.createInstance(userId: 'uid_test_123');
+      restoredController.restoreFromPayload(payload);
+      expect(restoredController.items.length, 2);
+      expect(restoredController.items[1].size, 'Size L');
+      expect(
+        restoredController.items[1].toppings,
+        ['Thêm quẩy giòn', 'Thêm trứng ốp la'],
+      );
+      expect(restoredController.items[1].unitPrice, 80000);
     });
 
     test('Increase and decrease quantity', () {
@@ -110,4 +142,3 @@ void main() {
     });
   });
 }
-

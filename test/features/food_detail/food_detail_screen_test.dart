@@ -76,7 +76,7 @@ void main() {
       expect(cart.subtotal, 110000.0);
     });
 
-    testWidgets('Selecting topping updates price and adds topping to cart item', (tester) async {
+    testWidgets('Selecting Size L and topping updates price and stores size & toppings in CartItem and OrderItem', (tester) async {
       final cart = CartController.createInstance();
       const bunCha = Food(
         id: 'f-buncha',
@@ -97,6 +97,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Select Size L (+15000 VNĐ)
+      final sizeLFinder = find.text('Size L');
+      await tester.ensureVisible(sizeLFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(sizeLFinder);
+      await tester.pump();
+
       // Scroll to topping "Thêm quẩy giòn" (+5000 VNĐ) and select it
       final quayFinder = find.text('Thêm quẩy giòn');
       await tester.ensureVisible(quayFinder);
@@ -109,9 +116,16 @@ void main() {
       await tester.pump();
 
       expect(cart.totalItemCount, 1);
-      expect(cart.subtotal, 55000.0);
-      expect(cart.items.first.food.price, 55000.0);
+      expect(cart.subtotal, 70000.0);
+      expect(cart.items.first.unitPrice, 70000.0);
+      expect(cart.items.first.size, 'Size L');
+      expect(cart.items.first.toppings, ['Thêm quẩy giòn']);
       expect(cart.items.first.food.name, contains('Thêm quẩy giòn'));
+
+      final orderItem = cart.items.first.toOrderItem();
+      expect(orderItem.size, 'Size L');
+      expect(orderItem.toppings, ['Thêm quẩy giòn']);
+      expect(orderItem.unitPrice, 70000.0);
     });
   });
 }

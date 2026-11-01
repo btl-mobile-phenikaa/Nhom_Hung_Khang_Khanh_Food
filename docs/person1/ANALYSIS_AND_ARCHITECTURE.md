@@ -1,8 +1,8 @@
-# Phần Người 1 — Phân tích đối tượng, kiến trúc và Firebase
+# Phần Người 1 — Phân tích đối tượng, kiến trúc và Firebase (Ứng dụng FoodHub)
 
 ## 1. Mục tiêu
 
-Ứng dụng đặt đồ ăn cho phép người dùng xem nhà hàng/món ăn, quản lý giỏ hàng, tạo đơn hàng và theo dõi trạng thái. Ứng dụng sử dụng Flutter/Dart; Firebase Authentication xác thực người dùng; Cloud Firestore lưu hồ sơ, nhà hàng, món ăn và đơn hàng; Firebase Storage có thể lưu ảnh nếu nhóm dùng ảnh tải lên.
+Ứng dụng đặt đồ ăn **FoodHub** cho phép người dùng xem nhà hàng/món ăn, tùy chọn kích cỡ (Size S/M/L) và Topping ăn kèm, quản lý giỏ hàng đồng bộ giữa `localStorage` và Cloud Firestore (`carts/{uid}`), tạo đơn hàng và theo dõi trạng thái. Ứng dụng sử dụng Flutter/Dart; Firebase Authentication xác thực người dùng; Cloud Firestore lưu hồ sơ, giỏ hàng, nhà hàng, món ăn và đơn hàng.
 
 ## 2. Phân tích đối tượng (C2)
 
@@ -11,31 +11,29 @@
 | `User` | `id`, `name`, `phone`, `address`, `email`, `photoUrl` | `fromMap`, `toMap`, `copyWith`, `updateAddress`; đại diện hồ sơ gắn với Firebase UID |
 | `Restaurant` | `id`, `name`, `address`, `description`, `imageUrl`, `phone`, `rating`, `isOpen` | `fromMap`, `toMap`; biểu diễn nhà hàng |
 | `Food` | `id`, `restaurantId`, `name`, `price`, `description`, `category`, `imageUrl`, `isAvailable`, `rating` | `fromMap`, `toMap`, `copyWith`; biểu diễn món ăn |
-| `CartItem` | `food`, `quantity` | `increase`, `decrease`, `subtotal`, `toMap`; biểu diễn món trong giỏ và số lượng |
-| `OrderItem` | `foodId`, `foodName`, `unitPrice`, `quantity`, `imageUrl` | `fromMap`, `toMap`, `subtotal`; lưu ảnh chụp dữ liệu món tại thời điểm đặt hàng |
-| `Order` | `id`, `userId`, `items`, `totalPrice`, `orderDate`, `status`, `deliveryAddress`, `paymentMethod`, `note` | `fromMap`, `toMap`, `copyWith`; biểu diễn đơn hàng và trạng thái |
-| `FoodRepository` | Tham chiếu collection `foods` | `getAll`, `watchAll`, `getById`, `add`, `update`, `delete` |
-| `RestaurantRepository` | Tham chiếu collection `restaurants` | `getAll`, `watchAll`, `getById`, `add`, `update` |
-| `UserRepository` | Tham chiếu collection `users` | `getById`, `watchById`, `save`, `updateProfile` |
-| `OrderRepository` | Tham chiếu collection `orders` | `create`, `watchByUser`, `getById`; trạng thái chỉ được cập nhật bởi bên có quyền quản trị |
+| `CartItem` | `food`, `quantity`, `size`, `toppings`, `unitPrice`, `note` | `increase`, `decrease`, `subtotal`, `toOrderItem`, `toMap`, `fromMap`; biểu diễn món trong giỏ kèm size, topping và giá snapshot |
+| `OrderItem` | `foodId`, `foodName`, `unitPrice`, `quantity`, `size`, `toppings`, `note`, `imageUrl` | `fromMap`, `toMap`, `subtotal`; lưu ảnh chụp (snapshot) dữ liệu món, size, topping và giá tại thời điểm đặt hàng |
+| `Order` | `id`, `userId`, `items`, `totalPrice`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` | `fromMap`, `toMap`, `copyWith`; biểu diễn đơn hàng với trường thời gian thống nhất `createdAt` |
+| `FoodRepository` | Tham chiếu collection `foods` | `getAll`, `watchAll`, `getById`, `search`, `getByCategory` |
+| `RestaurantRepository` | Tham chiếu collection `restaurants` | `getAll`, `watchAll`, `getById`, `search` |
+| `UserRepository` | Tham chiếu collection `users` | `fetch`, `save`, `ensureProfile` |
+| `OrderRepository` | Tham chiếu collection `orders` | `create`, `watchByUser`, `getById`; trạng thái chỉ được cập nhật bởi Quản trị viên / Trusted Backend |
 
 ### Quy tắc nghiệp vụ chính
 
-1. `User.id` là UID từ Firebase Authentication, không tự tăng số nguyên.
-2. `Food.price` và `OrderItem.unitPrice` là giá tại thời điểm đặt; đơn hàng không nên lấy giá mới nhất để tính lại lịch sử.
-3. `CartItem.quantity` phải lớn hơn hoặc bằng 1. Muốn xóa hẳn món, giao diện gọi thao tác xóa khỏi danh sách giỏ hàng.
-4. Đơn hàng phải thuộc một `userId` và có ít nhất một món.
-5. Các trạng thái đơn hàng hiển thị: `pending`, `confirmed`, `preparing`, `delivering`, `completed`, `cancelled`. Ứng dụng client chỉ tạo và đọc đơn; cập nhật trạng thái cần quyền quản trị.
-6. Dữ liệu tiền tệ dùng kiểu số (`double` trong mô hình học tập). Với hệ thống thanh toán thực tế, nên cân nhắc lưu tiền theo đơn vị nguyên (VND) để tránh sai số dấu phẩy động.
+1. `User.id` là UID từ Firebase Authentication; giỏ hàng lưu theo đúng UID tại `carts/{uid}`.
+2. `OrderItem.unitPrice` lưu giá snapshot tại thời điểm đặt hàng (đã cộng phụ phí `size` và `toppings`); lịch sử đơn hàng tuyệt đối không lấy giá hiện tại của món trong collection `foods`.
+3. `OrderItem` lưu đầy đủ `size` (ví dụ `Size L`) và `toppings` (ví dụ `['Thêm quẩy giòn', 'Thêm trứng ốp la']`) để lịch sử và chi tiết đơn hàng hiển thị chính xác cấu hình món đã đặt.
+4. Tên trường thời gian tạo đơn hàng được thống nhất là `createdAt` trên toàn bộ Model, Repository và Cloud Firestore.
+5. Giỏ hàng thống nhất cấu trúc payload giữa `localStorage` (`foodhub_active_cart_v1`) và Firestore (`carts/{uid}`).
+6. Người dùng chỉ được tạo và xem đơn hàng của chính mình; cập nhật trạng thái đơn hàng (`status`) do Quản trị viên (`isAdmin()`) hoặc Trusted Backend thực hiện.
 
 ## 3. Quan hệ giữa các lớp
 
-- Một `Restaurant` có thể cung cấp nhiều `Food`; mỗi `Food` tham chiếu một `restaurantId`.
-- Một `User` có thể tạo nhiều `Order`; mỗi `Order` tham chiếu `userId`.
-- Một `CartItem` tham chiếu một `Food` và lưu số lượng người dùng chọn.
-- Một `Order` bao gồm một hoặc nhiều `OrderItem`.
-- `OrderItem` lưu bản sao tên món/đơn giá/số lượng tại thời điểm đặt, tránh lịch sử bị thay đổi khi thông tin `Food` thay đổi.
-- Các repository thao tác với Firestore và chuyển đổi dữ liệu thông qua model; UI không cần tự xử lý cấu trúc document.
+- Một `Restaurant` cung cấp nhiều `Food`; mỗi `Food` tham chiếu một `restaurantId`.
+- Một `User` sở hữu một giỏ hàng `carts/{uid}` và có thể tạo nhiều `Order` (`userId == uid`).
+- Một `CartItem` tham chiếu một `Food`, lưu `quantity`, `size`, `toppings`, `unitPrice` và chuyển đổi trực tiếp sang `OrderItem` qua `toOrderItem()`.
+- Một `Order` bao gồm một hoặc nhiều `OrderItem` snapshot.
 
 ## 4. Class Diagram (C3)
 
@@ -50,8 +48,6 @@ classDiagram
     +String photoUrl
     +fromMap(map, id)
     +toMap()
-    +copyWith()
-    +updateAddress(newAddress)
   }
   class Restaurant {
     +String id
@@ -59,7 +55,6 @@ classDiagram
     +String address
     +String imageUrl
     +double rating
-    +bool isOpen
     +fromMap(map, id)
     +toMap()
   }
@@ -73,22 +68,28 @@ classDiagram
     +bool isAvailable
     +fromMap(map, id)
     +toMap()
-    +copyWith()
   }
   class CartItem {
     +Food food
     +int quantity
-    +subtotal double
-    +increase()
-    +decrease()
+    +String size
+    +List~String~ toppings
+    +double unitPrice
+    +String note
+    +double subtotal
+    +toOrderItem() OrderItem
     +toMap()
+    +fromMap(map)
   }
   class OrderItem {
     +String foodId
     +String foodName
     +double unitPrice
     +int quantity
-    +subtotal double
+    +String size
+    +List~String~ toppings
+    +String note
+    +double subtotal
     +fromMap(map)
     +toMap()
   }
@@ -97,181 +98,52 @@ classDiagram
     +String userId
     +List~OrderItem~ items
     +double totalPrice
-    +DateTime orderDate
+    +DateTime createdAt
     +String status
     +String deliveryAddress
     +String paymentMethod
     +fromMap(map, id)
     +toMap()
-    +copyWith(status)
-  }
-  class FoodRepository {
-    +getAll()
-    +watchAll()
-    +getById(id)
-    +add(food)
-    +update(food)
-    +delete(id)
-  }
-  class RestaurantRepository {
-    +getAll()
-    +watchAll()
-    +getById(id)
-    +add(restaurant)
-    +update(restaurant)
-  }
-  class UserRepository {
-    +getById(uid)
-    +watchById(uid)
-    +save(user)
-    +updateProfile(uid)
-  }
-  class OrderRepository {
-    +create(order)
-    +watchByUser(uid)
-    +getById(id)
   }
   Restaurant "1" --> "0..*" Food : cung cấp
   User "1" --> "0..*" Order : đặt
   CartItem "0..*" --> "1" Food : tham chiếu
   Order "1" *-- "1..*" OrderItem : gồm
-  FoodRepository ..> Food : chuyển đổi dữ liệu
-  RestaurantRepository ..> Restaurant : chuyển đổi dữ liệu
-  UserRepository ..> User : chuyển đổi dữ liệu
-  OrderRepository ..> Order : chuyển đổi dữ liệu
 ```
 
-## 5. Cấu trúc thư mục Flutter
+## 5. Thiết kế Firestore & Security Rules
 
-```text
-lib/
-  main.dart                 # Khởi tạo Firebase, theme và điều hướng ứng dụng
-  firebase_options.dart     # Cấu hình FlutterFire theo nền tảng
-  models/                   # Các đối tượng và ánh xạ document <-> model
-  repositories/             # Truy vấn/ghi Firestore, không chứa mã giao diện
-  screens/                  # Màn hình theo tính năng (bổ sung khi tách UI khỏi main.dart)
-  widgets/                  # Thành phần giao diện tái sử dụng
-test/
-  models/                   # Unit test cho model và ánh xạ dữ liệu
-  repositories/             # Test repository (dùng mock hoặc Firebase Emulator)
-docs/
-  person1/                  # Phân tích, kiến trúc, sơ đồ và hướng dẫn Firebase
-```
-
-`screens/` và `widgets/` là cấu trúc đích cho các thành viên khi bổ sung màn hình. Màn hình gọi repository thay vì truy cập Firestore trực tiếp; model không phụ thuộc vào widget. Firebase options là cấu hình ứng dụng, không chứa thông tin xác thực người dùng hay khóa dịch vụ quản trị.
-
-## 6. Kiến trúc hệ thống
-
-```mermaid
-flowchart TD
-  UI[Flutter UI: Home / Search / Cart / Profile / Orders]
-  REPO[Repository layer]
-  MODEL[Models and document mapping]
-  AUTH[Firebase Authentication]
-  DB[(Cloud Firestore)]
-  STORAGE[Firebase Storage - optional images]
-  UI --> REPO
-  REPO --> MODEL
-  REPO --> DB
-  UI --> AUTH
-  STORAGE -. image URL .-> DB
-```
-
-## 7. Thiết kế Firestore
-
-### Sơ đồ collection và quan hệ
-
-```mermaid
-flowchart LR
-  USERS["users/{uid}<br/>Hồ sơ người dùng"]
-  RESTAURANTS["restaurants/{restaurantId}<br/>Thông tin nhà hàng"]
-  FOODS["foods/{foodId}<br/>restaurantId"]
-  ORDERS["orders/{orderId}<br/>userId, items[]"]
-  RESTAURANTS -->|"1 nhà hàng có nhiều món"| FOODS
-  USERS -->|"1 người dùng có nhiều đơn"| ORDERS
-  ORDERS -->|"items[] nhúng OrderItem snapshot"| ITEMS["foodId, foodName, unitPrice, quantity"]
-```
-
-`items` là danh sách nhúng trong document đơn hàng, không phải collection riêng. Lưu snapshot tên món và đơn giá tại thời điểm đặt để lịch sử không thay đổi theo dữ liệu món hiện tại.
-
-| Collection/document | Document ID | Dữ liệu chính | Quyền truy cập theo rules mẫu |
+| Collection/document | Document ID | Dữ liệu chính | Quyền truy cập (`firestore.rules`) |
 |---|---|---|---|
-| `users/{uid}` | Firebase Auth UID | `name`, `phone`, `address`, `email`, `photoUrl`, `updatedAt` | Người dùng đã đăng nhập chỉ đọc/ghi document của chính mình |
-| `restaurants/{restaurantId}` | Firestore tự sinh hoặc ID do nhóm chọn | `name`, `address`, `description`, `imageUrl`, `phone`, `rating`, `isOpen` | Đọc công khai; ghi bởi quản trị/trusted environment |
-| `foods/{foodId}` | Firestore tự sinh hoặc ID do nhóm chọn | `restaurantId`, `name`, `price`, `description`, `category`, `imageUrl`, `isAvailable`, `rating` | Đọc công khai; ghi bởi quản trị/trusted environment |
-| `orders/{orderId}` | Firestore tự sinh | `userId`, `items[]`, `totalPrice`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` | Người dùng tạo đơn của mình và chỉ đọc đơn của mình; không tự cập nhật trạng thái |
+| `users/{uid}` | Firebase Auth UID | `name`, `phone`, `address`, `email`, `photoUrl`, `updatedAt` | Chỉ chủ tài khoản (`request.auth.uid == uid`) được đọc, tạo và sửa; chặn xóa |
+| `carts/{uid}` | Firebase Auth UID | `userId`, `deliveryAddress`, `totalItemCount`, `subtotal`, `updatedAt`, `items[]` | Chỉ chủ tài khoản (`request.auth.uid == uid`) được đọc và ghi giỏ hàng của chính mình |
+| `restaurants/{restaurantId}` | Firestore ID | `name`, `address`, `description`, `imageUrl`, `phone`, `rating`, `categories` | Đọc công khai (`allow read: if true`); chỉ Admin / Trusted Backend được sửa (`allow write: if isAdmin()`) |
+| `foods/{foodId}` | Firestore ID | `restaurantId`, `name`, `price`, `description`, `category`, `imageUrl`, `isAvailable`, `rating` | Đọc công khai (`allow read: if true`); chỉ Admin / Trusted Backend được sửa (`allow write: if isAdmin()`) |
+| `orders/{orderId}` | Firestore auto ID | `userId`, `items[]`, `totalPrice`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` | Người dùng chỉ tạo và đọc đơn của chính mình (`userId == request.auth.uid`); cập nhật `status` chỉ dành cho Admin / Trusted Backend |
 
-### `users/{uid}`
-
-```json
-{
-  "name": "Nguyen Van A",
-  "phone": "0900000000",
-  "address": "Ha Noi",
-  "email": "a@example.com",
-  "photoUrl": "",
-  "updatedAt": "server timestamp"
-}
-```
-
-Document ID nên trùng với UID của Firebase Authentication.
-
-### `restaurants/{restaurantId}`
-
-```json
-{
-  "name": "Quan Pho A",
-  "address": "Ha Noi",
-  "description": "Pho bo truyen thong",
-  "imageUrl": "",
-  "phone": "0900000000",
-  "rating": 4.5,
-  "isOpen": true
-}
-```
-
-### `foods/{foodId}`
-
-```json
-{
-  "restaurantId": "restaurant-document-id",
-  "name": "Pho bo",
-  "price": 45000,
-  "description": "Pho bo tai",
-  "category": "Mon nuoc",
-  "imageUrl": "",
-  "isAvailable": true,
-  "rating": 4.5
-}
-```
-
-### `orders/{orderId}`
+### Ví dụ document `orders/{orderId}` (Lưu snapshot giá, Size L và Topping)
 
 ```json
 {
   "userId": "firebase-auth-uid",
   "items": [
     {
-      "foodId": "food-document-id",
-      "foodName": "Pho bo",
-      "unitPrice": 45000,
+      "foodId": "pho_bo_tai_lan",
+      "foodName": "Phở Bò Tái Lăn Hà Nội",
+      "unitPrice": 80000,
       "quantity": 2,
+      "size": "Size L",
+      "toppings": ["Thêm quẩy giòn", "Thêm trứng ốp la"],
+      "note": "Ít hành",
       "imageUrl": "",
-      "subtotal": 90000
+      "subtotal": 160000
     }
   ],
-  "totalPrice": 90000,
-  "createdAt": "server timestamp",
+  "totalPrice": 160000,
+  "createdAt": "2026-10-31T12:15:00Z",
   "status": "pending",
-  "deliveryAddress": "Ha Noi",
+  "deliveryAddress": "144 Xuân Thủy, Cầu Giấy, Hà Nội",
   "paymentMethod": "cash",
-  "note": ""
+  "note": "Giao giờ nghỉ trưa"
 }
 ```
-
-## 8. Ghi chú bảo mật và giới hạn
-
-- Firebase API key phía client không thay thế cơ chế bảo vệ dữ liệu. Cần bật Firestore Security Rules và chỉ cho người dùng đọc/sửa hồ sơ của chính họ; đơn hàng chỉ được người sở hữu đọc, còn cập nhật trạng thái phải qua bên có quyền quản trị/trusted environment. `OrderRepository` phía client cố ý không cung cấp hàm cập nhật trạng thái vì rules mẫu chặn thao tác này.
-- Không để client tự do sửa `totalPrice` hoặc trạng thái đơn hàng trong ứng dụng thực tế. Với đồ án, hãy ghi rõ đây là mô hình học tập; nếu cần tính tiền đáng tin cậy thì tính/kiểm tra ở môi trường tin cậy.
-- Nếu dùng `where(userId == ...)` kết hợp `orderBy(createdAt)`, Firestore có thể yêu cầu tạo composite index; tạo index theo liên kết mà Firebase cung cấp khi chạy truy vấn.
-- Firestore là NoSQL document database, không phải ORM quan hệ truyền thống. Trong báo cáo nên mô tả `fromMap`/`toMap` là ánh xạ giữa document và Dart model, cùng repository quản lý CRUD.

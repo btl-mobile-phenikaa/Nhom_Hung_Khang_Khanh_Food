@@ -97,17 +97,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isPlacingOrder = true);
 
     try {
-      // Chuyển CartItem -> OrderItem
+      // Chuyển CartItem -> OrderItem (lưu đầy đủ snapshot giá, size, topping, ghi chú)
       final orderItems = _cart.items
-          .map(
-            (cartItem) => app_model.OrderItem(
-              foodId: cartItem.food.id,
-              foodName: cartItem.food.name,
-              unitPrice: cartItem.food.price,
-              quantity: cartItem.quantity,
-              imageUrl: cartItem.food.imageUrl,
-            ),
-          )
+          .map((cartItem) => cartItem.toOrderItem())
           .toList();
 
       final order = app_model.Order(
@@ -115,7 +107,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         userId: _effectiveUserId,
         items: orderItems,
         totalPrice: _finalTotal,
-        orderDate: DateTime.now(),
+        createdAt: DateTime.now(),
         status: 'pending',
         deliveryAddress: address,
         paymentMethod: _selectedPaymentMethod,
@@ -679,7 +671,22 @@ class _OrderItemTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${CurrencyFormatter.format(item.food.price)} × ${item.quantity}',
+                  [
+                    item.size,
+                    if (item.toppings.isNotEmpty)
+                      'Topping: ${item.toppings.join(', ')}',
+                  ].join(' • '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${CurrencyFormatter.format(item.unitPrice)} × ${item.quantity}',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],

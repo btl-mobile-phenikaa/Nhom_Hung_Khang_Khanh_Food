@@ -181,7 +181,7 @@ class _OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusInfo = _getStatusInfo(order.status);
-    final dateStr = _formatDate(order.orderDate);
+    final dateStr = _formatDate(order.createdAt);
 
     return InkWell(
       onTap: onTap,
@@ -306,19 +306,31 @@ class _OrderCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Hiển thị tên vài món đầu
+            // Hiển thị tên vài món đầu kèm size và topping
             if (order.items.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                order.items.map((e) => e.foodName).take(3).join(', ') +
+                order.items
+                        .map((e) {
+                          final details = <String>[
+                            if (e.size.isNotEmpty) e.size,
+                            if (e.toppings.isNotEmpty)
+                              '+${e.toppings.join(', ')}',
+                          ];
+                          return details.isEmpty
+                              ? e.foodName
+                              : '${e.foodName} (${details.join(' • ')})';
+                        })
+                        .take(3)
+                        .join(', ') +
                     (order.items.length > 3
                         ? ' (+${order.items.length - 3} món khác)'
                         : ''),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF94A3B8),
+                  color: Color(0xFF64748B),
                   fontWeight: FontWeight.w500,
                 ),
               ),

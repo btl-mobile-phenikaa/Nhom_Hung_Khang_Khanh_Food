@@ -6,30 +6,57 @@ class OrderItem {
     required this.foodName,
     required this.unitPrice,
     required this.quantity,
+    this.size = 'Size S',
+    this.toppings = const [],
+    this.note = '',
     this.imageUrl = '',
   });
 
   final String foodId;
   final String foodName;
+
+  /// Giá snapshot tại thời điểm đặt hàng (đã bao gồm phụ phí size và topping).
+  /// Không phụ thuộc vào giá hiện tại của món trong collection `foods`.
   final double unitPrice;
   final int quantity;
+  final String size;
+  final List<String> toppings;
+  final String note;
   final String imageUrl;
 
   double get subtotal => unitPrice * quantity;
 
-  factory OrderItem.fromMap(Map<String, dynamic> map) => OrderItem(
-        foodId: map['foodId'] as String? ?? '',
-        foodName: map['foodName'] as String? ?? '',
-        unitPrice: _asDouble(map['unitPrice']),
-        quantity: (map['quantity'] as num?)?.toInt() ?? 1,
-        imageUrl: map['imageUrl'] as String? ?? '',
-      );
+  factory OrderItem.fromMap(Map<String, dynamic> map) {
+    final rawToppings = map['toppings'];
+    final parsedToppings = rawToppings is List
+        ? rawToppings
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
+        : const <String>[];
+
+    return OrderItem(
+      foodId: map['foodId'] as String? ?? '',
+      foodName: map['foodName'] as String? ?? '',
+      unitPrice: _asDouble(map['unitPrice']),
+      quantity: (map['quantity'] as num?)?.toInt() ?? 1,
+      size: (map['size'] as String?)?.trim().isNotEmpty == true
+          ? (map['size'] as String).trim()
+          : 'Size S',
+      toppings: parsedToppings,
+      note: map['note'] as String? ?? '',
+      imageUrl: map['imageUrl'] as String? ?? '',
+    );
+  }
 
   Map<String, dynamic> toMap() => {
         'foodId': foodId,
         'foodName': foodName,
         'unitPrice': unitPrice,
         'quantity': quantity,
+        'size': size,
+        'toppings': toppings,
+        'note': note,
         'imageUrl': imageUrl,
         'subtotal': subtotal,
       };
@@ -40,37 +67,46 @@ class OrderItem {
 }
 
 class Order {
-  const Order({
+  Order({
     required this.id,
     required this.userId,
     required this.items,
     required this.totalPrice,
-    required this.orderDate,
+    DateTime? createdAt,
+    DateTime? orderDate,
     required this.status,
     required this.deliveryAddress,
     this.paymentMethod = 'cash',
     this.note = '',
-  });
+  }) : createdAt =
+            createdAt ?? orderDate ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   final String id;
   final String userId;
   final List<OrderItem> items;
   final double totalPrice;
-  final DateTime orderDate;
+
+  /// Tên trường thời gian tạo đơn thống nhất trên toàn bộ Model và Cloud Firestore.
+  final DateTime createdAt;
+
+  /// Getter tương thích ngược cho các đoạn mã cũ còn đọc `orderDate`.
+  DateTime get orderDate => createdAt;
+
   final String status;
   final String deliveryAddress;
   final String paymentMethod;
   final String note;
 
   factory Order.fromMap(Map<String, dynamic> map, {String? id}) {
-    final rawDate = map['orderDate'] ?? map['createdAt'];
+    final rawDate = map['createdAt'] ?? map['orderDate'];
     DateTime date;
     if (rawDate is Timestamp) {
       date = rawDate.toDate();
     } else if (rawDate is DateTime) {
       date = rawDate;
     } else if (rawDate is String) {
-      date = DateTime.tryParse(rawDate) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      date =
+          DateTime.tryParse(rawDate) ?? DateTime.fromMillisecondsSinceEpoch(0);
     } else {
       date = DateTime.fromMillisecondsSinceEpoch(0);
     }
@@ -88,7 +124,7 @@ class Order {
       userId: map['userId'] as String? ?? '',
       items: items,
       totalPrice: _asDouble(map['totalPrice']),
-      orderDate: date,
+      createdAt: date,
       status: map['status'] as String? ?? 'pending',
       deliveryAddress: map['deliveryAddress'] as String? ?? '',
       paymentMethod: map['paymentMethod'] as String? ?? 'cash',
@@ -100,7 +136,7 @@ class Order {
         'userId': userId,
         'items': items.map((item) => item.toMap()).toList(),
         'totalPrice': totalPrice,
-        'orderDate': Timestamp.fromDate(orderDate),
+        'createdAt': Timestamp.fromDate(createdAt),
         'status': status,
         'deliveryAddress': deliveryAddress,
         'paymentMethod': paymentMethod,
@@ -112,7 +148,7 @@ class Order {
         userId: userId,
         items: items,
         totalPrice: totalPrice,
-        orderDate: orderDate,
+        createdAt: createdAt,
         status: status ?? this.status,
         deliveryAddress: deliveryAddress,
         paymentMethod: paymentMethod,

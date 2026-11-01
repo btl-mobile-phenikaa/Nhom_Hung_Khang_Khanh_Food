@@ -46,9 +46,9 @@ sequenceDiagram
   participant UI as FoodDetailScreen
   participant Cart as Cart state/service
   participant Model as CartItem
-  User->>UI: Chọn số lượng và nhấn Thêm
-  UI->>Model: Tạo CartItem(food, quantity)
-  Model-->>Cart: Cung cấp item/subtotal
+  User->>UI: Chọn size, topping, số lượng và nhấn Thêm
+  UI->>Model: Tạo CartItem(food, quantity, size, toppings, unitPrice, note)
+  Model-->>Cart: Cung cấp item/subtotal (đồng bộ localStorage & carts/{uid})
   Cart->>Cart: Nếu món đã có thì tăng số lượng
   Cart-->>UI: Cập nhật giỏ hàng
   UI-->>User: Hiển thị xác nhận

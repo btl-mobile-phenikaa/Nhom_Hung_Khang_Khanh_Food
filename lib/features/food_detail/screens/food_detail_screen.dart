@@ -28,8 +28,9 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
 
   int _selectedSizeIndex = 0;
   final List<(String, double)> _sizes = [
-    ('Size Tiêu chuẩn', 0),
-    ('Size Lớn (Đặc biệt)', 15000),
+    ('Size S', 0),
+    ('Size M', 10000),
+    ('Size L', 15000),
   ];
 
   final Set<String> _selectedToppings = {};
@@ -94,6 +95,12 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
 
   void _addToCart() {
     final unitPrice = _calculateUnitPrice();
+    final selectedSize = _sizes[_selectedSizeIndex].$1;
+    final selectedToppings = _toppings
+        .where((top) => _selectedToppings.contains(top.$1))
+        .map((top) => top.$1)
+        .toList();
+    final note = _noteController.text.trim();
     final selectedOptions = _buildSelectedOptionLabels();
 
     final Food itemToAdd;
@@ -102,14 +109,20 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
     } else {
       final optionsText = selectedOptions.join(', ');
       itemToAdd = widget.food.copyWith(
-        id: '${widget.food.id}__${selectedOptions.join("|")}',
         name: '${widget.food.name} (+ $optionsText)',
         price: unitPrice,
         description: 'Tùy chọn: $optionsText',
       );
     }
 
-    _cart.addItem(itemToAdd, quantity: _quantity);
+    _cart.addItem(
+      itemToAdd,
+      quantity: _quantity,
+      size: selectedSize,
+      toppings: selectedToppings,
+      unitPrice: unitPrice,
+      note: note,
+    );
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

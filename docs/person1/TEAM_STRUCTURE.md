@@ -74,14 +74,15 @@ docs/
 | `users` | Firebase Auth UID | `name`, `phone`, `address`, `email`, `photoUrl`, `updatedAt` |
 | `restaurants` | Firestore auto ID | `name`, `address`, `description`, `imageUrl`, `phone`, `rating`, `isOpen` |
 | `foods` | Firestore auto ID | `name`, `price`, `description`, `category`, `restaurantId`, `imageUrl`, `isAvailable`, `rating` |
-| `orders` | Firestore auto ID | `userId`, `items`, `totalPrice`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` |
+| `orders` | Firestore auto ID | `userId`, `restaurantId`, `restaurantName`, `items`, `subtotal`, `shippingFee`, `discount`, `totalAmount`, `createdAt`, `status`, `deliveryAddress`, `paymentMethod`, `note` |
+| `carts` | Firebase Auth UID (`carts/{uid}`) | `userId`, `restaurantId`, `deliveryAddress`, `items`, `updatedAt` |
 
 - Tên field thống nhất theo `lowerCamelCase`; tên món luôn là `name` (số ít), không dùng `names`.
-- `price`, `unitPrice`, `subtotal`, `totalPrice` là số VND, không lưu chuỗi có dấu phân cách.
+- `price`, `unitPrice`, `subtotal`, `totalAmount` là số VND, không lưu chuỗi có dấu phân cách.
 - `isAvailable` và `isOpen` là boolean.
-- `Order.items` là mảng snapshot gồm `foodId`, `foodName`, `unitPrice`, `quantity`, `imageUrl`; giá/name được chụp tại lúc đặt.
-- `createdAt` dùng Firestore server timestamp. Trạng thái chuẩn: `pending`, `confirmed`, `preparing`, `delivering`, `completed`, `cancelled`.
-- Giỏ hàng chỉ lưu trong state của ứng dụng, chưa tạo collection Firestore riêng.
+- `Order.items` là mảng snapshot gồm `foodId`, `foodName`, `quantity`, `size`, `toppings`, `unitPrice`, `note`; giá/size/topping được chụp tại lúc đặt.
+- `createdAt` dùng thống nhất trên toàn hệ thống. Trạng thái chuẩn: `pending`, `confirmed`, `preparing`, `delivering`, `delivered`, `cancelled`.
+- Giỏ hàng đồng bộ cấu trúc giữa `localStorage` (`foodhub_active_cart_v1`) và Firestore (`carts/{uid}`).
 
 ## 3. Phân công sở hữu file
 

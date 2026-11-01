@@ -1,6 +1,6 @@
-# Food Delivery App
+# FoodHub — Ứng dụng Đặt đồ ăn Trực tuyến Đa nền tảng (Flutter & Firebase)
 
-Flutter food delivery app project using Firebase.
+Ứng dụng đặt đồ ăn trực tuyến **FoodHub** phát triển bằng Flutter/Dart kết hợp Firebase Authentication và Cloud Firestore thời gian thực.
 
 ## Wireframe
 
@@ -26,22 +26,17 @@ flutter analyze
 flutter test
 ```
 
-## Main data collections
+## Main data collections & Security Rules (`firestore.rules`)
 
-- `users/{uid}`
-- `restaurants/{restaurantId}`
-- `foods/{foodId}`
-- `orders/{orderId}`
-
-Cloud Firestore is a NoSQL document database. The Dart models' `fromMap`/`toMap` methods map documents to models, and repositories centralize database operations.
-
+- `users/{uid}`: Hồ sơ người dùng (chỉ chủ tài khoản `request.auth.uid == uid` mới được đọc/cập nhật).
+- `carts/{uid}`: Giỏ hàng cá nhân đồng bộ giữa `localStorage` (`foodhub_active_cart_v1`) và Cloud Firestore theo UID (chỉ chủ tài khoản mới được đọc/ghi).
+- `restaurants/{restaurantId}`: Danh mục nhà hàng đối tác (đọc công khai; chỉ Quản trị viên / Trusted Backend được phép chỉnh sửa).
+- `foods/{foodId}`: Thực đơn món ăn (đọc công khai; chỉ Quản trị viên / Trusted Backend được phép sửa giá và thông tin món).
+- `orders/{orderId}`: Đơn hàng lưu trường thời gian thống nhất `createdAt` và danh sách `OrderItem` snapshot (`foodId`, `foodName`, `unitPrice` tại thời điểm đặt, `quantity`, `size`, `toppings`, `note`). Người dùng chỉ được tạo và đọc đơn của chính mình; cập nhật trạng thái đơn hàng (`status`) chỉ do Quản trị viên / Trusted Backend thực hiện.
 
 ## Người 3 — Tài khoản và xác thực
 
-Đã kết nối Firebase Authentication và hồ sơ Firestore: Đăng nhập, Đăng ký,
-Hồ sơ, Chỉnh sửa hồ sơ, Đăng xuất, khôi phục phiên và test.
-Có thêm bản demo độc lập khi cần thử giao diện không có backend. Xem [hướng dẫn chạy và tích hợp](docs/person3/README.md),
-[sơ đồ luồng](docs/person3/FLOWS.md) và wireframe bên dưới.
+Đã kết nối Firebase Authentication và hồ sơ Firestore: Đăng nhập, Đăng ký, Hồ sơ, Chỉnh sửa hồ sơ, Đăng xuất, khôi phục phiên và test. Xem [hướng dẫn chạy và tích hợp](docs/person3/README.md), [sơ đồ luồng](docs/person3/FLOWS.md) và wireframe bên dưới.
 
 ![Wireframe tài khoản](docs/person3/account_wireframes.svg)
 

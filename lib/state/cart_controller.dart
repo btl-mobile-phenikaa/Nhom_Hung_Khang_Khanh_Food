@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,30 +10,72 @@ import '../core/storage/cart_storage.dart';
 import '../models/cart_item.dart';
 import '../models/food.dart';
 
-/// Quản lý trạng thái giỏ hàng:
+/// Quản lý trạng thái giỏ hàng FoodHub:
 /// - Cập nhật tức thời trên RAM (ChangeNotifier) để giao diện mượt mà.
-/// - Lưu đồng thời vào `localStorage` (trình duyệt Web) và Cloud Firestore (`carts/active_cart`),
-///   đảm bảo khi bấm F5 / tải lại trang giỏ hàng luôn được giữ nguyên 100%.
+/// - Lưu đồng bộ cấu trúc dữ liệu thống nhất giữa `localStorage` (`foodhub_active_cart_v1`)
+///   và Cloud Firestore theo UID người dùng (`carts/{uid}`), đảm bảo phân tách giỏ hàng
+///   cá nhân và khôi phục 100% khi tải lại trang (F5).
 class CartController extends ChangeNotifier {
-  static const String _localStorageKey = 'foodgo_active_cart_v1';
-  static const String _addressStorageKey = 'foodgo_delivery_address_v1';
+  static const String localStorageKey = 'foodhub_active_cart_v1';
+  static const String _legacyLocalStorageKey = 'foodgo_active_cart_v1';
+  static const String addressStorageKey = 'foodhub_delivery_address_v1';
   static final CartController _instance = CartController._internal();
 
   factory CartController() => _instance;
 
   CartController._internal() : _enablePersistence = true {
     _loadFromLocalStorage();
+    _initAuthSync();
     _loadFromFirestore();
   }
 
   @visibleForTesting
-  CartController.createInstance() : _enablePersistence = false;
+  CartController.createInstance({String? userId})
+      : _enablePersistence = false,
+        _userIdOverride = userId;
 
   final bool _enablePersistence;
+  String? _userIdOverride;
   final List<CartItem> _items = [];
   String _deliveryAddress = '144 Xuân Thủy, Cầu Giấy, Hà Nội';
 
   String get deliveryAddress => _deliveryAddress;
+
+  /// UID của người dùng hiện tại dùng để định danh tài liệu `carts/{uid}` trên Firestore.
+  String? get currentUserId {
+    if (_userIdOverride != null && _userIdOverride!.trim().isNotEmpty) {
+      return _userIdOverride!.trim();
+    }
+    if (!_canSyncFirestore) return null;
+    try {
+      return FirebaseAuth.instance.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Đường dẫn tài liệu Firestore của giỏ hàng người dùng hiện tại (`carts/{uid}`).
+  String? get firestoreCartPath {
+    final uid = currentUserId;
+    if (uid == null || uid.isEmpty) return null;
+    return 'carts/$uid';
+  }
+
+  @visibleForTesting
+  void setUserIdForTesting(String? uid) {
+    _userIdOverride = uid;
+  }
+
+  void _initAuthSync() {
+    if (!_canSyncFirestore) return;
+    try {
+      FirebaseAuth.instance.authStateChanges().listen((user) {
+        if (user != null) {
+          _loadFromFirestore();
+        }
+      });
+    } catch (_) {}
+  }
 
   void updateDeliveryAddress(String newAddress) {
     final trimmed = newAddress.trim();
@@ -41,7 +84,7 @@ class CartController extends ChangeNotifier {
     notifyListeners();
     if (_enablePersistence) {
       try {
-        writeLocalCartJson(_addressStorageKey, _deliveryAddress);
+        writeLocalCartJson(addressStorageKey, _deliveryAddress);
       } catch (_) {}
       _persistCart();
     }
@@ -73,17 +116,9 @@ class CartController extends ChangeNotifier {
     for (final raw in rawItems) {
       if (raw is Map) {
         final map = Map<String, dynamic>.from(raw);
-        final quantity = (map['quantity'] as num?)?.toInt() ?? 1;
-        final rawFood = map['food'];
-        if (rawFood is Map) {
-          final foodMap = Map<String, dynamic>.from(rawFood);
-          final food = Food.fromMap(
-            foodMap,
-            id: foodMap['id'] as String? ?? map['foodId'] as String? ?? '',
-          );
-          if (food.id.isNotEmpty && quantity >= 1) {
-            loaded.add(CartItem(food: food, quantity: quantity));
-          }
+        final item = CartItem.fromMap(map);
+        if (item.food.id.isNotEmpty && item.quantity >= 1) {
+          loaded.add(item);
         }
       }
     }
@@ -91,33 +126,52 @@ class CartController extends ChangeNotifier {
   }
 
   List<Map<String, dynamic>> _serializeItems() {
-    return _items
-        .map(
-          (item) => {
-            'foodId': item.food.id,
-            'quantity': item.quantity,
-            'subtotal': item.subtotal,
-            'food': {
-              'id': item.food.id,
-              ...item.food.toMap(),
-            },
-          },
-        )
-        .toList();
+    return _items.map((item) => item.toMap()).toList();
+  }
+
+  /// Tạo payload giỏ hàng có cấu trúc đồng nhất giữa LocalStorage và Cloud Firestore (`carts/{uid}`).
+  Map<String, dynamic> toCartPayload({String? userId}) => {
+        'userId': userId ?? currentUserId ?? '',
+        'deliveryAddress': _deliveryAddress,
+        'totalItemCount': totalItemCount,
+        'subtotal': subtotal,
+        'updatedAt': DateTime.now().toIso8601String(),
+        'items': _serializeItems(),
+      };
+
+  /// Khôi phục giỏ hàng từ payload đồng nhất (dùng chung cho LocalStorage và Firestore).
+  void restoreFromPayload(Map<String, dynamic> data, {bool overwriteItems = true}) {
+    final savedAddr = data['deliveryAddress'] as String?;
+    if (savedAddr != null && savedAddr.trim().isNotEmpty) {
+      _deliveryAddress = savedAddr.trim();
+    }
+    final rawItems = data['items'];
+    if (rawItems is List) {
+      final loaded = _parseSerializedItems(rawItems);
+      if (overwriteItems || _items.isEmpty) {
+        _items
+          ..clear()
+          ..addAll(loaded);
+      }
+    }
+    notifyListeners();
   }
 
   /// Khôi phục tức thời từ Browser localStorage khi F5 trên Web
   void _loadFromLocalStorage() {
     if (!_enablePersistence) return;
     try {
-      final savedAddress = readLocalCartJson(_addressStorageKey);
+      final savedAddress = readLocalCartJson(addressStorageKey);
       if (savedAddress != null && savedAddress.trim().isNotEmpty) {
         _deliveryAddress = savedAddress.trim();
       }
-      final rawJson = readLocalCartJson(_localStorageKey);
+      final rawJson = readLocalCartJson(localStorageKey) ??
+          readLocalCartJson(_legacyLocalStorageKey);
       if (rawJson == null || rawJson.isEmpty) return;
       final decoded = jsonDecode(rawJson);
-      if (decoded is List) {
+      if (decoded is Map) {
+        restoreFromPayload(Map<String, dynamic>.from(decoded));
+      } else if (decoded is List) {
         final loaded = _parseSerializedItems(decoded);
         if (loaded.isNotEmpty) {
           _items
@@ -133,32 +187,23 @@ class CartController extends ChangeNotifier {
     }
   }
 
-  /// Tải lại giỏ hàng đã lưu trên Firestore khi mở / F5 ứng dụng
+  /// Tải lại giỏ hàng cá nhân đã lưu trên Firestore (`carts/{uid}`) khi mở / F5 ứng dụng
   Future<void> _loadFromFirestore() async {
     if (!_canSyncFirestore) return;
+    final uid = currentUserId;
+    if (uid == null || uid.isEmpty) return;
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('carts')
-          .doc('active_cart')
+          .doc(uid)
           .get();
       if (!doc.exists || doc.data() == null) return;
 
       final data = doc.data()!;
-      final savedAddr = data['deliveryAddress'] as String?;
-      if (savedAddr != null && savedAddr.trim().isNotEmpty) {
-        _deliveryAddress = savedAddr.trim();
-        writeLocalCartJson(_addressStorageKey, _deliveryAddress);
-      }
-
-      final rawItems = data['items'];
-      if (rawItems is! List) return;
-
-      final loaded = _parseSerializedItems(rawItems);
-      if (loaded.isNotEmpty && _items.isEmpty) {
-        _items.addAll(loaded);
-        writeLocalCartJson(_localStorageKey, jsonEncode(_serializeItems()));
-      }
-      notifyListeners();
+      restoreFromPayload(data, overwriteItems: _items.isEmpty);
+      writeLocalCartJson(addressStorageKey, _deliveryAddress);
+      writeLocalCartJson(localStorageKey, jsonEncode(toCartPayload(userId: uid)));
     } catch (e) {
       if (kDebugMode) {
         debugPrint('CartController Firestore load skipped: $e');
@@ -166,30 +211,28 @@ class CartController extends ChangeNotifier {
     }
   }
 
-  /// Lưu giỏ hàng hiện tại vào cả localStorage và Firestore
+  /// Lưu giỏ hàng hiện tại với cùng một cấu trúc vào cả localStorage và Firestore (`carts/{uid}`)
   void _persistCart() {
     if (!_enablePersistence) return;
-    final serialized = _serializeItems();
+    final uid = currentUserId;
+    final payload = toCartPayload(userId: uid);
 
     // 1. Lưu đồng bộ ngay lập tức vào localStorage trình duyệt
     try {
-      writeLocalCartJson(_localStorageKey, jsonEncode(serialized));
-      writeLocalCartJson(_addressStorageKey, _deliveryAddress);
+      writeLocalCartJson(localStorageKey, jsonEncode(payload));
+      writeLocalCartJson(addressStorageKey, _deliveryAddress);
     } catch (_) {}
 
-    // 2. Lưu bất đồng bộ lên Cloud Firestore
-    if (!_canSyncFirestore) return;
+    // 2. Lưu bất đồng bộ lên Cloud Firestore theo UID (`carts/{uid}`) nếu người dùng đã đăng nhập
+    if (!_canSyncFirestore || uid == null || uid.isEmpty) return;
     unawaited(
       Future(() async {
         try {
           await FirebaseFirestore.instance
               .collection('carts')
-              .doc('active_cart')
+              .doc(uid)
               .set({
-            'items': serialized,
-            'deliveryAddress': _deliveryAddress,
-            'totalItemCount': totalItemCount,
-            'subtotal': subtotal,
+            ...payload,
             'updatedAt': FieldValue.serverTimestamp(),
           });
         } catch (e) {
@@ -201,23 +244,42 @@ class CartController extends ChangeNotifier {
     );
   }
 
-  /// Thêm món vào giỏ hàng với số lượng chỉ định (mặc định 1)
-  void addItem(Food food, {int quantity = 1}) {
+  /// Thêm món vào giỏ hàng với số lượng, size, danh sách topping và giá snapshot chỉ định
+  void addItem(
+    Food food, {
+    int quantity = 1,
+    String size = 'Size S',
+    List<String> toppings = const [],
+    double? unitPrice,
+    String note = '',
+  }) {
     if (quantity <= 0) return;
 
-    final existingIndex = _items.indexWhere((item) => item.food.id == food.id);
+    final candidate = CartItem(
+      food: food,
+      quantity: quantity,
+      size: size,
+      toppings: toppings,
+      unitPrice: unitPrice ?? food.price,
+      note: note,
+    );
+
+    final existingIndex =
+        _items.indexWhere((item) => item.itemKey == candidate.itemKey);
     if (existingIndex >= 0) {
       _items[existingIndex].quantity += quantity;
     } else {
-      _items.add(CartItem(food: food, quantity: quantity));
+      _items.add(candidate);
     }
     notifyListeners();
     _persistCart();
   }
 
-  /// Tăng số lượng món
-  void increaseQuantity(String foodId) {
-    final index = _items.indexWhere((item) => item.food.id == foodId);
+  /// Tăng số lượng món (hỗ trợ truyền itemKey hoặc foodId)
+  void increaseQuantity(String idOrKey) {
+    final index = _items.indexWhere(
+      (item) => item.itemKey == idOrKey || item.food.id == idOrKey,
+    );
     if (index >= 0) {
       _items[index].increase();
       notifyListeners();
@@ -225,9 +287,11 @@ class CartController extends ChangeNotifier {
     }
   }
 
-  /// Giảm số lượng món; nếu còn 1 mà giảm tiếp thì xóa khỏi giỏ
-  void decreaseQuantity(String foodId) {
-    final index = _items.indexWhere((item) => item.food.id == foodId);
+  /// Giảm số lượng món; nếu còn 1 mà giảm tiếp thì xóa khỏi giỏ (hỗ trợ truyền itemKey hoặc foodId)
+  void decreaseQuantity(String idOrKey) {
+    final index = _items.indexWhere(
+      (item) => item.itemKey == idOrKey || item.food.id == idOrKey,
+    );
     if (index >= 0) {
       if (_items[index].quantity > 1) {
         _items[index].decrease();
@@ -239,9 +303,11 @@ class CartController extends ChangeNotifier {
     }
   }
 
-  /// Xóa hẳn một món khỏi giỏ hàng
-  CartItem? removeItem(String foodId) {
-    final index = _items.indexWhere((item) => item.food.id == foodId);
+  /// Xóa hẳn một món khỏi giỏ hàng (hỗ trợ truyền itemKey hoặc foodId)
+  CartItem? removeItem(String idOrKey) {
+    final index = _items.indexWhere(
+      (item) => item.itemKey == idOrKey || item.food.id == idOrKey,
+    );
     if (index >= 0) {
       final removed = _items.removeAt(index);
       notifyListeners();
@@ -262,14 +328,14 @@ class CartController extends ChangeNotifier {
 
   /// Kiểm tra món đã có trong giỏ chưa
   bool hasItem(String foodId) {
-    return _items.any((item) => item.food.id == foodId);
+    return _items.any((item) => item.food.id == foodId || item.itemKey == foodId);
   }
 
-  /// Lấy số lượng hiện tại của một món
+  /// Lấy tổng số lượng hiện tại của một món trong giỏ
   int getQuantity(String foodId) {
-    final item =
-        _items.where((element) => element.food.id == foodId).firstOrNull;
-    return item?.quantity ?? 0;
+    return _items
+        .where((element) => element.food.id == foodId || element.itemKey == foodId)
+        .fold<int>(0, (sum, item) => sum + item.quantity);
   }
 
   /// Reset dùng cho test
