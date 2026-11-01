@@ -1,21 +1,27 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/data/sample_food_catalog.dart';
 import '../../../core/formatters/currency_formatter.dart';
 import '../../../core/widgets/food_image_helper.dart';
 import '../../../models/cart_item.dart';
+import '../../../state/auth_controller.dart';
 import '../../../state/cart_controller.dart';
+import '../../auth/screens/login_screen.dart';
 import '../../checkout/screens/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({
     super.key,
     this.cartController,
+    this.authController,
     this.onCheckout,
     this.onExploreFoods,
   });
 
   final CartController? cartController;
+  final AuthController? authController;
   final VoidCallback? onCheckout;
   final VoidCallback? onExploreFoods;
 
@@ -284,6 +290,60 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
+            Text('Yêu cầu đăng nhập'),
+          ],
+        ),
+        content: const Text(
+          'Bạn cần đăng nhập tài khoản để có thể tiến hành đặt món và theo dõi đơn hàng.',
+          style: TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Để sau', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (widget.authController != null) {
+                widget.authController!.clearError();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LoginScreen(controller: widget.authController!),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng vào tab Tài khoản để đăng nhập.'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Đăng nhập ngay'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleCheckout() {
     if (widget.onCheckout != null) {
       widget.onCheckout!();
@@ -292,11 +352,27 @@ class _CartScreenState extends State<CartScreen> {
 
     if (_cart.isEmpty) return;
 
+    final isLoggedIn = (widget.authController?.user != null) ||
+        (Firebase.apps.isNotEmpty &&
+            fb_auth.FirebaseAuth.instance.currentUser != null);
+
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog();
+      return;
+    }
+
+    final userId = widget.authController?.user?.id ??
+        (Firebase.apps.isNotEmpty
+            ? fb_auth.FirebaseAuth.instance.currentUser?.uid
+            : null);
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CheckoutScreen(
           cartController: _cart,
           voucherDiscount: _voucherApplied ? _discountAmount : 0,
+          userId: userId,
+          authController: widget.authController,
         ),
       ),
     );

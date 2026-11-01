@@ -5,40 +5,138 @@ import 'package:flutter/material.dart';
 import '../../../core/formatters/currency_formatter.dart';
 import '../../../models/order.dart' as app_model;
 import '../../../repositories/order_repository.dart';
+import '../../../state/auth_controller.dart';
+import '../../auth/screens/login_screen.dart';
 import 'order_detail_screen.dart';
 
 /// Màn hình Lịch sử đơn hàng:
 /// - Danh sách đơn hàng (ngày đặt, tổng tiền, trạng thái)
 /// - Nhấn chọn đơn để xem chi tiết
 class OrderHistoryScreen extends StatefulWidget {
-  const OrderHistoryScreen({super.key, this.userId});
+  const OrderHistoryScreen({
+    super.key,
+    this.userId,
+    this.authController,
+  });
 
   final String? userId;
+  final AuthController? authController;
 
   @override
   State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
-  String get _effectiveUserId {
+  String? get _effectiveUserId {
     final explicit = widget.userId?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
+    final controllerUid = widget.authController?.user?.id.trim();
+    if (controllerUid != null && controllerUid.isNotEmpty) return controllerUid;
     if (Firebase.apps.isNotEmpty) {
       final uid = fb_auth.FirebaseAuth.instance.currentUser?.uid;
       if (uid != null && uid.isNotEmpty) return uid;
     }
-    return 'demo_user';
+    return null;
   }
 
   Stream<List<app_model.Order>> _watchOrders() {
-    if (Firebase.apps.isEmpty) {
+    final uid = _effectiveUserId;
+    if (uid == null || uid.isEmpty || Firebase.apps.isEmpty) {
       return Stream.value(const []);
     }
-    return OrderRepository().watchByUser(_effectiveUserId);
+    return OrderRepository().watchByUser(uid);
   }
 
   @override
   Widget build(BuildContext context) {
+    final uid = _effectiveUserId;
+
+    if (uid == null || uid.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FAFC),
+        appBar: AppBar(
+          title: const Text(
+            'Lịch sử đơn hàng',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0.5,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 64,
+                    color: Color(0xFF2563EB),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Yêu cầu đăng nhập',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF2D3142),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Vui lòng đăng nhập để xem lịch sử đơn hàng của bạn.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (widget.authController != null)
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      widget.authController!.clearError();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LoginScreen(
+                            controller: widget.authController!,
+                          ),
+                        ),
+                      ).then((_) {
+                        if (mounted) setState(() {});
+                      });
+                    },
+                    icon: const Icon(Icons.login_rounded),
+                    label: const Text(
+                      'Đăng nhập ngay',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFC),
       appBar: AppBar(

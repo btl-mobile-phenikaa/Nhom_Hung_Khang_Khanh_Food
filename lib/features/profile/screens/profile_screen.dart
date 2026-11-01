@@ -139,7 +139,26 @@ class ProfileScreen extends StatelessWidget {
               leading: const Icon(Icons.receipt_long_outlined),
               title: const Text('Lịch sử đơn hàng'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: onOrderHistory,
+              onTap: () {
+                if (user == null) {
+                  controller.clearError();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LoginScreen(controller: controller),
+                    ),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Vui lòng đăng nhập để xem lịch sử đơn hàng.'),
+                      backgroundColor: Color(0xFF2563EB),
+                    ),
+                  );
+                  return;
+                }
+                onOrderHistory!();
+              },
             ),
           ],
           const Divider(height: 32),

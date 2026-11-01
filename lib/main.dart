@@ -166,13 +166,17 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       CartScreen(
         cartController: _cart,
+        authController: _auth,
         onExploreFoods: () => setState(() => currentIndex = 0),
       ),
       ProfileScreen(
         controller: _auth,
         onOrderHistory: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => OrderHistoryScreen(userId: _auth.user?.id),
+            builder: (_) => OrderHistoryScreen(
+              userId: _auth.user?.id,
+              authController: _auth,
+            ),
           ),
         ),
       ),

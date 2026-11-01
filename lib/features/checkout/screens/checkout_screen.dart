@@ -7,7 +7,9 @@ import '../../../core/widgets/food_image_helper.dart';
 import '../../../models/cart_item.dart';
 import '../../../models/order.dart' as app_model;
 import '../../../repositories/order_repository.dart';
+import '../../../state/auth_controller.dart';
 import '../../../state/cart_controller.dart';
+import '../../auth/screens/login_screen.dart';
 import '../../order_history/screens/order_history_screen.dart';
 
 /// Màn hình Xác nhận đơn hàng (Checkout):
@@ -23,11 +25,13 @@ class CheckoutScreen extends StatefulWidget {
     required this.cartController,
     this.voucherDiscount = 0,
     this.userId,
+    this.authController,
   });
 
   final CartController cartController;
   final double voucherDiscount;
   final String? userId;
+  final AuthController? authController;
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -37,14 +41,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _noteController = TextEditingController();
   final _addressController = TextEditingController();
 
-  String get _effectiveUserId {
+  String? get _effectiveUserId {
     final explicit = widget.userId?.trim();
     if (explicit != null && explicit.isNotEmpty) return explicit;
+    final controllerUid = widget.authController?.user?.id.trim();
+    if (controllerUid != null && controllerUid.isNotEmpty) return controllerUid;
     if (Firebase.apps.isNotEmpty) {
       final uid = fb_auth.FirebaseAuth.instance.currentUser?.uid;
       if (uid != null && uid.isNotEmpty) return uid;
     }
-    return 'demo_user';
+    return null;
   }
 
   String _selectedPaymentMethod = 'cash';
@@ -76,7 +82,70 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   double get _finalTotal =>
       (_cart.totalPrice - widget.voucherDiscount).clamp(0.0, double.infinity);
 
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_outline_rounded, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
+            Text('Yêu cầu đăng nhập'),
+          ],
+        ),
+        content: const Text(
+          'Bạn cần đăng nhập tài khoản để có thể hoàn tất đặt hàng.',
+          style: TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (widget.authController != null) {
+                widget.authController!.clearError();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LoginScreen(controller: widget.authController!),
+                  ),
+                ).then((_) {
+                  if (mounted) setState(() {});
+                });
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Vui lòng đăng nhập từ tab Tài khoản trước khi đặt hàng.'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Đăng nhập'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _placeOrder() async {
+    final uid = _effectiveUserId;
+    if (uid == null || uid.isEmpty) {
+      _showLoginRequiredDialog();
+      return;
+    }
+
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Giỏ hàng đang trống')));
@@ -104,7 +173,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       final order = app_model.Order(
         id: '',
-        userId: _effectiveUserId,
+        userId: uid,
         items: orderItems,
         totalPrice: _finalTotal,
         createdAt: DateTime.now(),
@@ -199,7 +268,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => OrderHistoryScreen(
-                        userId: _effectiveUserId,
+                        userId: uid,
+                        authController: widget.authController,
                       ),
                     ),
                   );
@@ -248,6 +318,54 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (_effectiveUserId == null) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFFDC2626),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Bạn chưa đăng nhập. Vui lòng đăng nhập để hoàn tất đặt hàng.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFF991B1B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _showLoginRequiredDialog,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            minimumSize: Size.zero,
+                          ),
+                          child: const Text(
+                            'Đăng nhập',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // === 1. TÓM TẮT MÓN ===
                 _buildSectionHeader(
                   icon: Icons.restaurant_menu_rounded,
